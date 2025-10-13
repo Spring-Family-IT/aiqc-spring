@@ -83,27 +83,32 @@ const Index = () => {
       return;
     }
 
-    // Track last non-empty values for fill-forward columns
+    // Track last non-empty values for all columns
     let lastMDP703b = "";
+    let lastCommNo = "";
     let lastEmpty2 = "";
 
     const filteredData = excelData.rows.map((row) => {
-      // Fill forward logic for MDP703b column
+      // Fill forward logic for all columns
       const mdp703bValue = row["MDP703b - Product Labeling Data Ext."];
       if (mdp703bValue !== undefined && mdp703bValue !== null && mdp703bValue !== "") {
         lastMDP703b = mdp703bValue;
       }
 
-      // Fill forward logic for __EMPTY_2 column
+      const commNoValue = row["Communication no."];
+      if (commNoValue !== undefined && commNoValue !== null && commNoValue !== "") {
+        lastCommNo = commNoValue;
+      }
+
       const empty2Value = row["__EMPTY_2"];
       if (empty2Value !== undefined && empty2Value !== null && empty2Value !== "") {
         lastEmpty2 = empty2Value;
       }
 
-      // Always include three keys
+      // Always include three keys with fill-forward values
       return {
         "MDP703b - Product Labeling Data Ext.": lastMDP703b,
-        "Communication no.": row["Communication no."] || "",
+        "Communication no.": lastCommNo,
         "__EMPTY_2": lastEmpty2
       };
     });
@@ -261,11 +266,16 @@ const Index = () => {
                     {JSON.stringify(
                       (() => {
                         let lastMDP703b = "";
+                        let lastCommNo = "";
                         let lastEmpty2 = "";
                         return excelData.rows.slice(0, 3).map((row) => {
                           const mdp703bValue = row["MDP703b - Product Labeling Data Ext."];
                           if (mdp703bValue !== undefined && mdp703bValue !== null && mdp703bValue !== "") {
                             lastMDP703b = mdp703bValue;
+                          }
+                          const commNoValue = row["Communication no."];
+                          if (commNoValue !== undefined && commNoValue !== null && commNoValue !== "") {
+                            lastCommNo = commNoValue;
                           }
                           const empty2Value = row["__EMPTY_2"];
                           if (empty2Value !== undefined && empty2Value !== null && empty2Value !== "") {
@@ -273,7 +283,7 @@ const Index = () => {
                           }
                           return {
                             "MDP703b - Product Labeling Data Ext.": lastMDP703b,
-                            "Communication no.": row["Communication no."] || "",
+                            "Communication no.": lastCommNo,
                             "__EMPTY_2": lastEmpty2
                           };
                         });
