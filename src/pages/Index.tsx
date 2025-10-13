@@ -83,12 +83,29 @@ const Index = () => {
       return;
     }
 
+    // Track last non-empty values for fill-forward columns
+    let lastMDP703b = "";
+    let lastEmpty2 = "";
+
     const filteredData = excelData.rows.map((row) => {
-      const filtered: any = {};
-      selectedColumns.forEach((col) => {
-        filtered[col] = row[col];
-      });
-      return filtered;
+      // Fill forward logic for MDP703b column
+      const mdp703bValue = row["MDP703b - Product Labeling Data Ext."];
+      if (mdp703bValue !== undefined && mdp703bValue !== null && mdp703bValue !== "") {
+        lastMDP703b = mdp703bValue;
+      }
+
+      // Fill forward logic for __EMPTY_2 column
+      const empty2Value = row["__EMPTY_2"];
+      if (empty2Value !== undefined && empty2Value !== null && empty2Value !== "") {
+        lastEmpty2 = empty2Value;
+      }
+
+      // Always include three keys
+      return {
+        "MDP703b - Product Labeling Data Ext.": lastMDP703b,
+        "Communication no.": row["Communication no."] || "",
+        "__EMPTY_2": lastEmpty2
+      };
     });
 
     const jsonString = JSON.stringify(filteredData, null, 2);
@@ -242,13 +259,25 @@ const Index = () => {
                 <div className="bg-secondary/50 p-4 rounded-lg max-h-64 overflow-auto">
                   <pre className="text-xs font-mono">
                     {JSON.stringify(
-                      excelData.rows.slice(0, 3).map((row) => {
-                        const filtered: any = {};
-                        selectedColumns.forEach((col) => {
-                          filtered[col] = row[col];
+                      (() => {
+                        let lastMDP703b = "";
+                        let lastEmpty2 = "";
+                        return excelData.rows.slice(0, 3).map((row) => {
+                          const mdp703bValue = row["MDP703b - Product Labeling Data Ext."];
+                          if (mdp703bValue !== undefined && mdp703bValue !== null && mdp703bValue !== "") {
+                            lastMDP703b = mdp703bValue;
+                          }
+                          const empty2Value = row["__EMPTY_2"];
+                          if (empty2Value !== undefined && empty2Value !== null && empty2Value !== "") {
+                            lastEmpty2 = empty2Value;
+                          }
+                          return {
+                            "MDP703b - Product Labeling Data Ext.": lastMDP703b,
+                            "Communication no.": row["Communication no."] || "",
+                            "__EMPTY_2": lastEmpty2
+                          };
                         });
-                        return filtered;
-                      }),
+                      })(),
                       null,
                       2
                     )}
