@@ -150,15 +150,19 @@ const Index = () => {
     reader.onload = (e) => {
       try {
         const jsonData = JSON.parse(e.target?.result as string);
+        console.log("Parsed JSON data:", jsonData);
+        console.log("Is array?", Array.isArray(jsonData));
+        
         if (Array.isArray(jsonData)) {
           setUploadedJSON(jsonData);
-          toast.success("JSON file uploaded successfully!");
+          toast.success(`JSON file uploaded successfully! (${jsonData.length} items)`);
         } else {
-          toast.error("JSON file must contain an array");
+          toast.error("JSON file must be an array. Example: [{...}, {...}]");
+          console.error("JSON is not an array. Received:", typeof jsonData);
         }
       } catch (error) {
-        toast.error("Failed to parse JSON file");
-        console.error(error);
+        toast.error("Failed to parse JSON file. Please ensure it's valid JSON.");
+        console.error("JSON parse error:", error);
       }
     };
 
@@ -406,6 +410,10 @@ const Index = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 Upload a JSON file to search for elements from your Excel data
               </p>
+              <div className="mb-4 p-3 bg-secondary/30 rounded-md text-xs">
+                <p className="font-semibold mb-1">Expected JSON format (array):</p>
+                <pre className="text-muted-foreground">[{"{"}...{"}"}, {"{"}...{"}"}]</pre>
+              </div>
 
               <div className="space-y-4">
                 {!uploadedJSON ? (
