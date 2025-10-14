@@ -45,12 +45,40 @@ const Index = () => {
         const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
         if (jsonData.length > 0) {
-          const columns = Object.keys(jsonData[0] as object);
-          setExcelData({
-            columns,
-            rows: jsonData,
+          const originalColumns = Object.keys(jsonData[0] as object);
+          
+          // Handle empty columns by renaming them
+          let emptyColumnCounter = 1;
+          const renamedColumns = originalColumns.map(col => {
+            if (!col || col.trim() === '' || col.startsWith('__EMPTY')) {
+              const newName = `Unnamed Column ${emptyColumnCounter}`;
+              emptyColumnCounter++;
+              return newName;
+            }
+            return col;
           });
-          setSelectedColumns(columns);
+          
+          // Create a mapping from old to new column names
+          const columnMapping: Record<string, string> = {};
+          originalColumns.forEach((oldName, index) => {
+            columnMapping[oldName] = renamedColumns[index];
+          });
+          
+          // Rename columns in the actual data
+          const renamedRows = jsonData.map(row => {
+            const newRow: any = {};
+            Object.keys(row).forEach(oldKey => {
+              const newKey = columnMapping[oldKey] || oldKey;
+              newRow[newKey] = (row as any)[oldKey];
+            });
+            return newRow;
+          });
+          
+          setExcelData({
+            columns: renamedColumns,
+            rows: renamedRows,
+          });
+          setSelectedColumns(renamedColumns);
           toast.success("Excel file loaded successfully!");
         } else {
           toast.error("The Excel file appears to be empty");
