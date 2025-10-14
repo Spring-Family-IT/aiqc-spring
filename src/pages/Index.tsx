@@ -271,7 +271,7 @@ const Index = () => {
                 </p>
               </div>
 
-              <label className="cursor-pointer">
+              <div>
                 <input
                   type="file"
                   accept=".xlsx,.xls"
@@ -280,12 +280,17 @@ const Index = () => {
                     if (file) handleFileUpload(file);
                   }}
                   className="hidden"
+                  id="excel-file-input"
                 />
-                <Button size="lg" className="text-lg px-8">
+                <Button 
+                  size="lg" 
+                  className="text-lg px-8"
+                  onClick={() => document.getElementById('excel-file-input')?.click()}
+                >
                   <FileSpreadsheet className="mr-2 h-5 w-5" />
                   Choose File
                 </Button>
-              </label>
+              </div>
 
               <p className="text-sm text-muted-foreground">
                 Supports .xlsx and .xls files
