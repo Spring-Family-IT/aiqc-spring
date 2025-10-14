@@ -167,13 +167,31 @@ const Index = () => {
       return null;
     }
     
-    // Handle nested keys with dot notation (e.g., "data.items")
-    const keys = key.split('.');
+    // Parse path with support for dot notation and array indexing
+    // e.g., "documents[0].fields.SKU_Front" or "data.items[1].name"
+    const pathRegex = /([^.[]+)|\[(\d+)\]/g;
+    const path: (string | number)[] = [];
+    let match;
+    
+    while ((match = pathRegex.exec(key)) !== null) {
+      if (match[1] !== undefined) {
+        path.push(match[1]); // property name
+      } else if (match[2] !== undefined) {
+        path.push(parseInt(match[2], 10)); // array index
+      }
+    }
+    
     let result = uploadedJSON;
     
-    for (const k of keys) {
-      if (result && typeof result === 'object' && k in result) {
-        result = result[k];
+    for (const segment of path) {
+      if (result === null || result === undefined) {
+        return null;
+      }
+      
+      if (typeof segment === 'number' && Array.isArray(result)) {
+        result = result[segment];
+      } else if (typeof segment === 'string' && typeof result === 'object') {
+        result = result[segment];
       } else {
         return null;
       }
@@ -433,7 +451,7 @@ const Index = () => {
                       <div className="flex gap-2">
                         <Input
                           type="text"
-                          placeholder='e.g., "SKU_Front" or "data.items"'
+                          placeholder='e.g., "documents[0].fields.SKU_Front"'
                           value={queryKey}
                           onChange={(e) => setQueryKey(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleQuery()}
@@ -447,7 +465,7 @@ const Index = () => {
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Use dot notation for nested keys (e.g., "data.items" or "user.name")
+                        Supports dot notation and array indexing (e.g., "documents[0].fields.SKU_Front")
                       </p>
                     </div>
 
