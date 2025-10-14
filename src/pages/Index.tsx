@@ -409,7 +409,7 @@ const Index = () => {
 
               <div className="space-y-4">
                 {!uploadedJSON ? (
-                  <label className="cursor-pointer block">
+                  <div>
                     <input
                       type="file"
                       accept=".json"
@@ -418,12 +418,18 @@ const Index = () => {
                         if (file) handleJSONUpload(file);
                       }}
                       className="hidden"
+                      id="json-file-input"
                     />
-                    <Button variant="outline" size="lg" className="w-full">
+                    <Button 
+                      variant="outline" 
+                      size="lg" 
+                      className="w-full"
+                      onClick={() => document.getElementById('json-file-input')?.click()}
+                    >
                       <Upload className="mr-2 h-5 w-5" />
                       Upload JSON File
                     </Button>
-                  </label>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
