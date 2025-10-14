@@ -42,41 +42,34 @@ const Index = () => {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+        const arrayData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: null });
 
-        if (jsonData.length > 0) {
-          const originalColumns = Object.keys(jsonData[0] as object);
+        if (arrayData.length > 0) {
+          const originalColumns = (arrayData[0] as any[]) || [];
           
           // Handle empty columns by renaming them
           let emptyColumnCounter = 1;
-          const renamedColumns = originalColumns.map(col => {
-            if (!col || col.trim() === '' || col.startsWith('__EMPTY')) {
+          const renamedColumns = originalColumns.map((col: any) => {
+            if (col === null || col === undefined || String(col).trim() === '') {
               const newName = `Unnamed Column ${emptyColumnCounter}`;
               emptyColumnCounter++;
               return newName;
             }
-            return col;
+            return String(col);
           });
           
-          // Create a mapping from old to new column names
-          const columnMapping: Record<string, string> = {};
-          originalColumns.forEach((oldName, index) => {
-            columnMapping[oldName] = renamedColumns[index];
-          });
-          
-          // Rename columns in the actual data
-          const renamedRows = jsonData.map(row => {
-            const newRow: any = {};
-            Object.keys(row).forEach(oldKey => {
-              const newKey = columnMapping[oldKey] || oldKey;
-              newRow[newKey] = (row as any)[oldKey];
+          // Convert array rows to objects using renamed column headers
+          const rows = arrayData.slice(1).map((row: any) => {
+            const rowObj: any = {};
+            renamedColumns.forEach((colName, index) => {
+              rowObj[colName] = row[index];
             });
-            return newRow;
+            return rowObj;
           });
           
           setExcelData({
             columns: renamedColumns,
-            rows: renamedRows,
+            rows: rows,
           });
           setSelectedColumns(renamedColumns);
           toast.success("Excel file loaded successfully!");
