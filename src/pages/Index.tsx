@@ -23,10 +23,10 @@ const Index = () => {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadedJSON, setUploadedJSON] = useState<any[] | null>(null);
+  const [uploadedJSON, setUploadedJSON] = useState<any>(null);
   const [jsonFileName, setJsonFileName] = useState<string>("");
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [searchKey, setSearchKey] = useState<string>("MDP703b - Product Labeling Data Ext.");
+  const [queryKey, setQueryKey] = useState<string>("");
+  const [queryResult, setQueryResult] = useState<any>(null);
 
   const handleFileUpload = (file: File) => {
     if (!file.name.match(/\.(xlsx|xls)$/)) {
@@ -150,36 +150,9 @@ const Index = () => {
     reader.onload = (e) => {
       try {
         const jsonData = JSON.parse(e.target?.result as string);
-        console.log("Parsed JSON data:", jsonData);
-        console.log("Is array?", Array.isArray(jsonData));
-        
-        let arrayData: any[] = [];
-        
-        if (Array.isArray(jsonData)) {
-          // Already an array
-          arrayData = jsonData;
-        } else if (typeof jsonData === 'object' && jsonData !== null) {
-          // Try to extract arrays from object
-          const values = Object.values(jsonData);
-          const arrays = values.filter(v => Array.isArray(v));
-          
-          if (arrays.length > 0) {
-            // Use the first array found
-            arrayData = arrays[0] as any[];
-            toast.success(`Converted nested JSON to array! (${arrayData.length} items)`);
-          } else {
-            // Convert single object to array with one item
-            arrayData = [jsonData];
-            toast.success("Converted single object to array (1 item)");
-          }
-        } else {
-          toast.error("Unable to convert JSON to array format");
-          console.error("JSON is not an object or array. Received:", typeof jsonData);
-          return;
-        }
-        
-        setUploadedJSON(arrayData);
-        console.log("Final array data:", arrayData);
+        setUploadedJSON(jsonData);
+        toast.success("JSON file uploaded successfully!");
+        console.log("JSON stored:", jsonData);
       } catch (error) {
         toast.error("Failed to parse JSON file. Please ensure it's valid JSON.");
         console.error("JSON parse error:", error);
@@ -189,63 +162,42 @@ const Index = () => {
     reader.readAsText(file);
   };
 
-  const searchInJSON = () => {
-    if (!excelData || !uploadedJSON || !searchKey) {
-      toast.error("Please ensure both files are uploaded and a search key is selected");
+  const getKey = (key: string): any => {
+    if (!uploadedJSON) {
+      return null;
+    }
+    
+    // Handle nested keys with dot notation (e.g., "data.items")
+    const keys = key.split('.');
+    let result = uploadedJSON;
+    
+    for (const k of keys) {
+      if (result && typeof result === 'object' && k in result) {
+        result = result[k];
+      } else {
+        return null;
+      }
+    }
+    
+    return result;
+  };
+
+  const handleQuery = () => {
+    if (!queryKey.trim()) {
+      toast.error("Please enter a key to query");
       return;
     }
-
-    // Generate the Excel JSON data first
-    let lastMDP703b = "";
-    let lastCommNo = "";
-    let lastEmpty2 = "";
-
-    const excelJsonData = excelData.rows.map((row) => {
-      const mdp703bValue = row["MDP703b - Product Labeling Data Ext."];
-      if (mdp703bValue !== undefined && mdp703bValue !== null && mdp703bValue !== "") {
-        lastMDP703b = mdp703bValue;
-      }
-
-      const commNoValue = row["Communication no."];
-      if (commNoValue !== undefined && commNoValue !== null && commNoValue !== "") {
-        lastCommNo = commNoValue;
-      }
-
-      const empty2Value = row["__EMPTY_2"];
-      if (empty2Value !== undefined && empty2Value !== null && empty2Value !== "") {
-        lastEmpty2 = empty2Value;
-      }
-
-      return {
-        "MDP703b - Product Labeling Data Ext.": lastMDP703b,
-        "Communication no.": lastCommNo,
-        "__EMPTY_2": lastEmpty2
-      };
-    });
-
-    // Search for each element in uploaded JSON
-    const results: SearchResult[] = excelJsonData.map((item) => {
-      const elementValue = item[searchKey];
-      const found = uploadedJSON.some((jsonItem) => 
-        JSON.stringify(jsonItem).toLowerCase().includes(String(elementValue).toLowerCase())
-      );
-      
-      const matchedItem = found 
-        ? uploadedJSON.find((jsonItem) => 
-            JSON.stringify(jsonItem).toLowerCase().includes(String(elementValue).toLowerCase())
-          )
-        : undefined;
-
-      return {
-        element: elementValue,
-        found,
-        matchedIn: matchedItem
-      };
-    });
-
-    setSearchResults(results);
-    toast.success(`Search complete! Found ${results.filter(r => r.found).length} matches out of ${results.length}`);
+    
+    const result = getKey(queryKey);
+    setQueryResult(result);
+    
+    if (result !== null) {
+      toast.success(`Key "${queryKey}" found!`);
+    } else {
+      toast.error(`Key "${queryKey}" not found`);
+    }
   };
+
 
   const reset = () => {
     setExcelData(null);
@@ -253,7 +205,8 @@ const Index = () => {
     setFileName("");
     setUploadedJSON(null);
     setJsonFileName("");
-    setSearchResults([]);
+    setQueryKey("");
+    setQueryResult(null);
   };
 
   return (
@@ -426,18 +379,10 @@ const Index = () => {
             )}
 
             <Card className="p-6 border-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <h3 className="text-xl font-semibold mb-4">Compare with JSON File</h3>
+              <h3 className="text-xl font-semibold mb-4">Query JSON Data</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Upload a JSON file to search for elements from your Excel data
+                Upload a JSON file and query its keys
               </p>
-              <div className="mb-4 p-3 bg-secondary/30 rounded-md text-xs space-y-2">
-                <p className="font-semibold mb-1">Accepted JSON formats:</p>
-                <div className="space-y-1 text-muted-foreground">
-                  <p>1. Array: <code>{'[{...}, {...}]'}</code></p>
-                  <p>2. Object with array: <code>{'{data: [{...}]}'}</code></p>
-                  <p>3. Single object: <code>{'{key: "value"}'}</code></p>
-                </div>
-              </div>
 
               <div className="space-y-4">
                 {!uploadedJSON ? (
@@ -475,7 +420,8 @@ const Index = () => {
                         onClick={() => {
                           setUploadedJSON(null);
                           setJsonFileName("");
-                          setSearchResults([]);
+                          setQueryKey("");
+                          setQueryResult(null);
                         }}
                       >
                         Remove
@@ -483,61 +429,46 @@ const Index = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Search by column:</label>
-                      <select 
-                        className="w-full p-2 border rounded-md bg-background"
-                        value={searchKey}
-                        onChange={(e) => setSearchKey(e.target.value)}
-                      >
-                        <option value="MDP703b - Product Labeling Data Ext.">MDP703b - Product Labeling Data Ext.</option>
-                        <option value="Communication no.">Communication no.</option>
-                        <option value="__EMPTY_2">__EMPTY_2</option>
-                      </select>
+                      <label className="text-sm font-medium">Query Key:</label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="text"
+                          placeholder='e.g., "SKU_Front" or "data.items"'
+                          value={queryKey}
+                          onChange={(e) => setQueryKey(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleQuery()}
+                        />
+                        <Button 
+                          onClick={handleQuery}
+                          className="gap-2"
+                        >
+                          <Search className="h-5 w-5" />
+                          Query
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Use dot notation for nested keys (e.g., "data.items" or "user.name")
+                      </p>
                     </div>
 
-                    <Button 
-                      onClick={searchInJSON}
-                      className="w-full gap-2"
-                    >
-                      <Search className="h-5 w-5" />
-                      Search in JSON
-                    </Button>
+                    {queryResult !== null && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-semibold mb-2">Result for "{queryKey}":</h4>
+                        <div className="bg-secondary/50 p-4 rounded-lg max-h-96 overflow-auto">
+                          <pre className="text-xs font-mono">
+                            {typeof queryResult === 'object' 
+                              ? JSON.stringify(queryResult, null, 2)
+                              : String(queryResult)
+                            }
+                          </pre>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             </Card>
 
-            {searchResults.length > 0 && (
-              <Card className="p-6 border-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <h3 className="text-xl font-semibold mb-4">Search Results</h3>
-                <div className="space-y-2 max-h-96 overflow-auto">
-                  {searchResults.map((result, index) => (
-                    <div 
-                      key={index}
-                      className={`p-3 rounded-lg border ${
-                        result.found 
-                          ? 'bg-green-500/10 border-green-500/20' 
-                          : 'bg-red-500/10 border-red-500/20'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-sm">{result.element}</span>
-                        <span className={`text-xs font-semibold ${
-                          result.found ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                        }`}>
-                          {result.found ? '✓ Found' : '✗ Not Found'}
-                        </span>
-                      </div>
-                      {result.found && result.matchedIn && (
-                        <pre className="mt-2 text-xs bg-background/50 p-2 rounded overflow-x-auto">
-                          {JSON.stringify(result.matchedIn, null, 2)}
-                        </pre>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
           </div>
         )}
       </div>
