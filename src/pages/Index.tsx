@@ -153,13 +153,33 @@ const Index = () => {
         console.log("Parsed JSON data:", jsonData);
         console.log("Is array?", Array.isArray(jsonData));
         
+        let arrayData: any[] = [];
+        
         if (Array.isArray(jsonData)) {
-          setUploadedJSON(jsonData);
-          toast.success(`JSON file uploaded successfully! (${jsonData.length} items)`);
+          // Already an array
+          arrayData = jsonData;
+        } else if (typeof jsonData === 'object' && jsonData !== null) {
+          // Try to extract arrays from object
+          const values = Object.values(jsonData);
+          const arrays = values.filter(v => Array.isArray(v));
+          
+          if (arrays.length > 0) {
+            // Use the first array found
+            arrayData = arrays[0] as any[];
+            toast.success(`Converted nested JSON to array! (${arrayData.length} items)`);
+          } else {
+            // Convert single object to array with one item
+            arrayData = [jsonData];
+            toast.success("Converted single object to array (1 item)");
+          }
         } else {
-          toast.error("JSON file must be an array. Example: [{...}, {...}]");
-          console.error("JSON is not an array. Received:", typeof jsonData);
+          toast.error("Unable to convert JSON to array format");
+          console.error("JSON is not an object or array. Received:", typeof jsonData);
+          return;
         }
+        
+        setUploadedJSON(arrayData);
+        console.log("Final array data:", arrayData);
       } catch (error) {
         toast.error("Failed to parse JSON file. Please ensure it's valid JSON.");
         console.error("JSON parse error:", error);
@@ -410,9 +430,13 @@ const Index = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 Upload a JSON file to search for elements from your Excel data
               </p>
-              <div className="mb-4 p-3 bg-secondary/30 rounded-md text-xs">
-                <p className="font-semibold mb-1">Expected JSON format (array):</p>
-                <pre className="text-muted-foreground">[{"{"}...{"}"}, {"{"}...{"}"}]</pre>
+              <div className="mb-4 p-3 bg-secondary/30 rounded-md text-xs space-y-2">
+                <p className="font-semibold mb-1">Accepted JSON formats:</p>
+                <div className="space-y-1 text-muted-foreground">
+                  <p>1. Array: <code>{'[{...}, {...}]'}</code></p>
+                  <p>2. Object with array: <code>{'{data: [{...}]}'}</code></p>
+                  <p>3. Single object: <code>{'{key: "value"}'}</code></p>
+                </div>
               </div>
 
               <div className="space-y-4">
