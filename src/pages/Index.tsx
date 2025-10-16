@@ -1,515 +1,580 @@
-import { useState } from "react";
-import * as XLSX from "xlsx";
-import { Upload, FileSpreadsheet, Download, CheckCircle2, Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { FileUpload } from "@/components/FileUpload";
+import { ModelsList } from "@/components/ModelsList";
+import { ResourceDetails } from "@/components/ResourceDetails";
+import { ProjectsList } from "@/components/ProjectsList";
+import { CascadingDropdowns } from "@/components/CascadingDropdowns";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-
-interface ExcelData {
-  columns: string[];
-  rows: any[];
-}
-
-interface SearchResult {
-  element: string;
-  found: boolean;
-  matchedIn?: any;
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload } from "lucide-react";
+import { Session } from "@supabase/supabase-js";
+import * as XLSX from "xlsx";
 
 const Index = () => {
-  const [excelData, setExcelData] = useState<ExcelData | null>(null);
-  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
-  const [fileName, setFileName] = useState<string>("");
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploadedJSON, setUploadedJSON] = useState<any>(null);
-  const [jsonFileName, setJsonFileName] = useState<string>("");
-  const [queryKey, setQueryKey] = useState<string>("");
-  const [queryResult, setQueryResult] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<any>(null);
+  const [models, setModels] = useState<any[]>([]);
+  const [customModels, setCustomModels] = useState<any[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedModelId, setSelectedModelId] = useState("");
+  const [azureEndpoint, setAzureEndpoint] = useState<string>("");
+  const [apiVersion, setApiVersion] = useState<string>("");
+  const [customCount, setCustomCount] = useState<number>(0);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleFileUpload = (file: File) => {
-    if (!file.name.match(/\.(xlsx|xls)$/)) {
-      toast.error("Please upload a valid Excel file (.xlsx or .xls)");
-      return;
-    }
-
-    setFileName(file.name);
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: "array" });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const arrayData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: null });
-
-        if (arrayData.length > 0) {
-          const originalColumns = (arrayData[0] as any[]) || [];
-          
-          // Handle empty columns by renaming them
-          let emptyColumnCounter = 1;
-          const renamedColumns = originalColumns.map((col: any) => {
-            if (col === null || col === undefined || String(col).trim() === '') {
-              const newName = `Unnamed Column ${emptyColumnCounter}`;
-              emptyColumnCounter++;
-              return newName;
-            }
-            return String(col);
-          });
-          
-          // Convert array rows to objects using renamed column headers
-          const rows = arrayData.slice(1).map((row: any) => {
-            const rowObj: any = {};
-            renamedColumns.forEach((colName, index) => {
-              rowObj[colName] = row[index];
-            });
-            return rowObj;
-          });
-          
-          setExcelData({
-            columns: renamedColumns,
-            rows: rows,
-          });
-          setSelectedColumns(renamedColumns);
-          toast.success("Excel file loaded successfully!");
-        } else {
-          toast.error("The Excel file appears to be empty");
+  useEffect(() => {
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        if (!session) {
+          navigate("/auth");
         }
-      } catch (error) {
-        toast.error("Failed to parse Excel file");
-        console.error(error);
       }
-    };
-
-    reader.readAsArrayBuffer(file);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileUpload(file);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const toggleColumn = (column: string) => {
-    setSelectedColumns((prev) =>
-      prev.includes(column)
-        ? prev.filter((col) => col !== column)
-        : [...prev, column]
     );
-  };
 
-  const generateJSON = () => {
-    if (!excelData || selectedColumns.length === 0) {
-      toast.error("Please select at least one column");
-      return;
-    }
-
-    // Track last non-empty values for all columns
-    let lastMDP703b = "";
-    let lastCommNo = "";
-    let lastEmpty2 = "";
-
-    const filteredData = excelData.rows.map((row) => {
-      // Fill forward logic for all columns
-      const mdp703bValue = row["MDP703b - Product Labeling Data Ext."];
-      if (mdp703bValue !== undefined && mdp703bValue !== null && mdp703bValue !== "") {
-        lastMDP703b = mdp703bValue;
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (!session) {
+        navigate("/auth");
       }
-
-      const commNoValue = row["Communication no."];
-      if (commNoValue !== undefined && commNoValue !== null && commNoValue !== "") {
-        lastCommNo = commNoValue;
-      }
-
-      const empty2Value = row["__EMPTY_2"];
-      if (empty2Value !== undefined && empty2Value !== null && empty2Value !== "") {
-        lastEmpty2 = empty2Value;
-      }
-
-      // Always include three keys with fill-forward values
-      return {
-        "MDP703b - Product Labeling Data Ext.": lastMDP703b,
-        "Communication no.": lastCommNo,
-        "__EMPTY_2": lastEmpty2
-      };
     });
 
-    const jsonString = JSON.stringify(filteredData, null, 2);
-    const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName.replace(/\.(xlsx|xls)$/, ".json");
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
-    toast.success("JSON file downloaded successfully!");
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
-  const handleJSONUpload = (file: File) => {
-    if (!file.name.match(/\.json$/)) {
-      toast.error("Please upload a valid JSON file");
+  const handleFileSelect = (file: File) => {
+    setPdfFile(file);
+    setAnalysisResults(null);
+  };
+
+  const handleExcelFileSelect = (file: File) => {
+    setExcelFile(file);
+  };
+
+  const uploadExcelToDatabase = async () => {
+    if (!excelFile || !session?.user) {
+      toast({
+        title: "Missing file or authentication",
+        description: "Please upload an Excel file and ensure you're logged in",
+        variant: "destructive",
+      });
       return;
     }
 
-    setJsonFileName(file.name);
-    const reader = new FileReader();
+    setIsUploading(true);
+    
+    try {
+      // Read Excel file
+      const arrayBuffer = await excelFile.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-    reader.onload = (e) => {
-      try {
-        const jsonData = JSON.parse(e.target?.result as string);
-        setUploadedJSON(jsonData);
-        toast.success("JSON file uploaded successfully!");
-        console.log("JSON stored:", jsonData);
-      } catch (error) {
-        toast.error("Failed to parse JSON file. Please ensure it's valid JSON.");
-        console.error("JSON parse error:", error);
+      // Parse headers and data
+      const headers = jsonData[0] as string[];
+      const dataRows = jsonData.slice(1);
+
+      // Group rows by Communication no. and Product Version no.
+      const productMap = new Map<string, any>();
+
+      for (const row of dataRows) {
+        const rowData = row as any[];
+        if (!rowData || rowData.length === 0) continue;
+
+        const commNo = rowData[0];
+        const productVersion = rowData[2];
+        const key = `${commNo}-${productVersion}`;
+
+        if (!productMap.has(key)) {
+          // Create new product entry
+          productMap.set(key, {
+            communication_no: rowData[0],
+            material: rowData[1],
+            product_version_no: rowData[2],
+            name_of_dependency: rowData[3],
+            finished_goods_material_number: rowData[4],
+            super_theme: rowData[5],
+            geography: rowData[6],
+            ean_upc: rowData[7],
+            product_age_classification: rowData[8],
+            piece_count_of_fg: rowData[9] ? parseInt(rowData[9]) : null,
+            global_launch_date: rowData[10],
+            marketing_exit_date: rowData[11],
+            components: []
+          });
+        }
+
+        // Add component if exists
+        if (rowData[12]) {
+          productMap.get(key).components.push({
+            material_group: rowData[12],
+            component: rowData[14],
+            component_description: rowData[15],
+            design_raw_material: rowData[16],
+            super_design: rowData[18],
+            pack_print_orientation: rowData[19],
+            packaging_sublevel: rowData[20],
+            bom_quantity: rowData[21]
+          });
+        }
       }
-    };
 
-    reader.readAsText(file);
+      // Insert products and components into database
+      let productsInserted = 0;
+      let componentsInserted = 0;
+
+      for (const [, productData] of productMap) {
+        const components = productData.components;
+        delete productData.components;
+
+        // Insert product
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .insert({
+            ...productData,
+            user_id: session.user.id
+          })
+          .select()
+          .single();
+
+        if (productError) {
+          console.error('Error inserting product:', productError);
+          continue;
+        }
+
+        productsInserted++;
+
+        // Insert components
+        if (components.length > 0 && product) {
+          const componentsWithProductId = components.map((comp: any) => ({
+            ...comp,
+            product_id: product.id
+          }));
+
+          const { error: componentsError } = await supabase
+            .from('product_components')
+            .insert(componentsWithProductId);
+
+          if (componentsError) {
+            console.error('Error inserting components:', componentsError);
+          } else {
+            componentsInserted += components.length;
+          }
+        }
+      }
+
+      toast({
+        title: "Upload successful",
+        description: `Inserted ${productsInserted} products and ${componentsInserted} components`,
+      });
+
+      setExcelFile(null);
+    } catch (error) {
+      console.error('Error uploading Excel data:', error);
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to process Excel file",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const getKey = (key: string): any => {
-    if (!uploadedJSON) {
-      return null;
+  const downloadAnalysisCSV = () => {
+    if (!analysisResults || !analysisResults.fields) return;
+
+    // Convert fields object to array format for CSV
+    const csvData = Object.entries(analysisResults.fields).map(([field, value]) => ({
+      Field: field,
+      Value: String(value)
+    }));
+
+    // Create worksheet from data
+    const worksheet = XLSX.utils.json_to_sheet(csvData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Analysis Results");
+
+    // Generate CSV file and trigger download
+    const fileName = `analysis_${pdfFile?.name.replace('.pdf', '')}_${new Date().toISOString().split('T')[0]}.csv`;
+    XLSX.writeFile(workbook, fileName, { bookType: 'csv' });
+
+    toast({
+      title: "CSV downloaded",
+      description: `Analysis results saved as ${fileName}`,
+    });
+  };
+
+  const analyzePdf = async () => {
+    if (!pdfFile) {
+      toast({
+        title: "Missing PDF file",
+        description: "Please upload a PDF file first",
+        variant: "destructive",
+      });
+      return;
     }
+
+    if (!selectedModelId) {
+      toast({
+        title: "No model selected",
+        description: "Please select a model before analyzing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisResults(null);
     
-    // Parse path with support for dot notation and array indexing
-    // e.g., "documents[0].fields.SKU_Front" or "data.items[1].name"
-    const pathRegex = /([^.[]+)|\[(\d+)\]/g;
-    const path: (string | number)[] = [];
-    let match;
-    
-    while ((match = pathRegex.exec(key)) !== null) {
-      if (match[1] !== undefined) {
-        path.push(match[1]); // property name
-      } else if (match[2] !== undefined) {
-        path.push(parseInt(match[2], 10)); // array index
+    try {
+      // Create FormData to send PDF to edge function
+      const formData = new FormData();
+      formData.append('pdf', pdfFile);
+      formData.append('modelId', selectedModelId);
+
+      // Call Azure Document Intelligence via edge function
+      const { data, error } = await supabase.functions.invoke('analyze-document', {
+        body: formData,
+      });
+
+      if (error) {
+        throw error;
       }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setAnalysisResults(data);
+      
+      toast({
+        title: "Analysis complete",
+        description: `Extracted ${Object.keys(data.fields || {}).length} fields from PDF`,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to analyze PDF";
+      toast({
+        title: "Analysis error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      console.error("Analysis error:", error);
+    } finally {
+      setIsAnalyzing(false);
     }
-    
-    let result = uploadedJSON;
-    
-    for (const segment of path) {
-      if (result === null || result === undefined) {
-        return null;
+  };
+
+
+  const loadProjects = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-document-models', {
+        body: { fetchProjects: true }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const projectsList = data.projects || [];
+      setProjects(projectsList);
+      
+      // Show info about models and projects
+      if (data.customModelsCount === 0) {
+        toast({
+          title: "No custom models found",
+          description: `Only prebuilt models detected. Create custom extraction models in Azure Document Intelligence Studio to see projects.`,
+          variant: "destructive",
+        });
+      } else if (projectsList.length === 0) {
+        toast({
+          title: "No projects found",
+          description: `Found ${data.customModelsCount} custom models, but none have project tags. Models need to be tagged with 'projectId' and 'projectName' in Azure.`,
+          variant: "destructive",
+        });
+      } else {
+        // Set default project if available
+        const defaultProject = projectsList.find((p: any) => p.id === "c8b46fee-55a2-459e-8243-243880c9b9b4");
+        setSelectedProjectId(defaultProject?.id || projectsList[0].id);
+      }
+    } catch (error) {
+      console.error("Error loading projects:", error);
+      toast({
+        title: "Error loading projects",
+        description: error instanceof Error ? error.message : "Failed to load projects",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadAllModels = async () => {
+    setIsLoadingModels(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-document-models', {
+        body: {} // Fetch all models
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      if (data?.customModels) {
+        setModels(data.customModels);
+        setCustomModels(data.customModels);
+        if (data.endpoint) {
+          setAzureEndpoint(data.endpoint);
+        }
+        if (data.apiVersion) {
+          setApiVersion(data.apiVersion);
+        }
+        setCustomCount(data.customCount || 0);
+        
+        // Auto-select first model if available
+        if (data.customModels.length > 0 && !selectedModelId) {
+          setSelectedModelId(data.customModels[0].modelId);
+        }
+        
+        toast({
+          title: "Custom models loaded",
+          description: `Found ${data.customCount || 0} custom extraction models`
+        });
+      }
+    } catch (error) {
+      console.error('Error loading models:', error);
+      toast({
+        title: "Error loading models",
+        description: error instanceof Error ? error.message : "Failed to load models",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  const loadModels = async () => {
+    if (!selectedProjectId) {
+      loadAllModels();
+      return;
+    }
+
+    setIsLoadingModels(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-document-models', {
+        body: { projectId: selectedProjectId }
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setModels(data.models || []);
+      if (data.endpoint) {
+        setAzureEndpoint(data.endpoint);
+      }
+      if (data.apiVersion) {
+        setApiVersion(data.apiVersion);
       }
       
-      if (typeof segment === 'number' && Array.isArray(result)) {
-        result = result[segment];
-      } else if (typeof segment === 'string' && typeof result === 'object') {
-        result = result[segment];
-      } else {
-        return null;
-      }
-    }
-    
-    return result;
-  };
-
-  const handleQuery = () => {
-    if (!queryKey.trim()) {
-      toast.error("Please enter a key to query");
-      return;
-    }
-    
-    const result = getKey(queryKey);
-    setQueryResult(result);
-    
-    if (result !== null) {
-      toast.success(`Key "${queryKey}" found!`);
-    } else {
-      toast.error(`Key "${queryKey}" not found`);
+      toast({
+        title: "Models loaded",
+        description: `Found ${data.models?.length || 0} models for selected project`,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load models";
+      toast({
+        title: "Error loading models",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      console.error("Error loading models:", error);
+    } finally {
+      setIsLoadingModels(false);
     }
   };
 
-
-  const reset = () => {
-    setExcelData(null);
-    setSelectedColumns([]);
-    setFileName("");
-    setUploadedJSON(null);
-    setJsonFileName("");
-    setQueryKey("");
-    setQueryResult(null);
-  };
+  if (!session) {
+    return null; // Will redirect in useEffect
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/30">
-      <div className="container mx-auto px-4 py-8 md:py-16">
-        <header className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Excel to JSON Converter
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Upload your Excel file, select the columns you need, and generate a clean JSON file
-          </p>
-        </header>
-
-        {!excelData ? (
-          <Card 
-            className="max-w-2xl mx-auto p-8 md:p-12 border-2 transition-all duration-300 hover:shadow-lg animate-in fade-in slide-in-from-bottom-6 duration-700"
-            style={{ 
-              borderColor: isDragging ? "hsl(var(--primary))" : undefined,
-              boxShadow: isDragging ? "var(--shadow-glow)" : undefined 
-            }}
-          >
-            <div
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              className="text-center space-y-6"
-            >
-              <div className="flex justify-center">
-                <div className="p-6 rounded-full bg-primary/10 transition-transform duration-300 hover:scale-110">
-                  <Upload className="w-12 h-12 text-primary" />
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-2xl font-semibold mb-2">Upload Excel File</h2>
-                <p className="text-muted-foreground mb-6">
-                  Drag and drop your file here, or click to browse
-                </p>
-              </div>
-
-              <div>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file);
-                  }}
-                  className="hidden"
-                  id="excel-file-input"
-                />
-                <Button 
-                  size="lg" 
-                  className="text-lg px-8"
-                  onClick={() => document.getElementById('excel-file-input')?.click()}
-                >
-                  <FileSpreadsheet className="mr-2 h-5 w-5" />
-                  Choose File
-                </Button>
-              </div>
-
-              <p className="text-sm text-muted-foreground">
-                Supports .xlsx and .xls files
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto space-y-8">
+          {/* Header */}
+          <div className="text-center space-y-4">
+            <div className="flex justify-end items-center mb-4">
+              <Button variant="outline" onClick={handleSignOut}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
             </div>
-          </Card>
-        ) : (
-          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <Card className="p-6 border-2">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <FileSpreadsheet className="h-6 w-6 text-primary" />
-                  <div>
-                    <h3 className="font-semibold text-lg">{fileName}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {excelData.rows.length} rows • {excelData.columns.length} columns
-                    </p>
-                  </div>
-                </div>
-                <Button variant="outline" onClick={reset}>
-                  Upload New File
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="p-6 border-2">
-              <h3 className="text-xl font-semibold mb-4">Select Columns</h3>
-              <p className="text-sm text-muted-foreground mb-6">
-                Choose which columns to include in your JSON output
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {excelData.columns.map((column) => (
-                  <div
-                    key={column}
-                    className="flex items-center space-x-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                  >
-                    <Checkbox
-                      id={column}
-                      checked={selectedColumns.includes(column)}
-                      onCheckedChange={() => toggleColumn(column)}
-                    />
-                    <label
-                      htmlFor={column}
-                      className="text-sm font-medium cursor-pointer flex-1 select-none"
-                    >
-                      {column}
-                    </label>
-                    {selectedColumns.includes(column) && (
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 flex justify-between items-center pt-6 border-t">
-                <p className="text-sm text-muted-foreground">
-                  {selectedColumns.length} of {excelData.columns.length} columns selected
-                </p>
-                <Button 
-                  size="lg" 
-                  onClick={generateJSON}
-                  disabled={selectedColumns.length === 0}
-                  className="gap-2"
-                >
-                  <Download className="h-5 w-5" />
-                  Generate JSON
-                </Button>
-              </div>
-            </Card>
-
-            {selectedColumns.length > 0 && (
-              <Card className="p-6 border-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <h3 className="text-lg font-semibold mb-3">Preview</h3>
-                <div className="bg-secondary/50 p-4 rounded-lg max-h-64 overflow-auto">
-                  <pre className="text-xs font-mono">
-                    {JSON.stringify(
-                      (() => {
-                        let lastMDP703b = "";
-                        let lastCommNo = "";
-                        let lastEmpty2 = "";
-                        return excelData.rows.slice(0, 3).map((row) => {
-                          const mdp703bValue = row["MDP703b - Product Labeling Data Ext."];
-                          if (mdp703bValue !== undefined && mdp703bValue !== null && mdp703bValue !== "") {
-                            lastMDP703b = mdp703bValue;
-                          }
-                          const commNoValue = row["Communication no."];
-                          if (commNoValue !== undefined && commNoValue !== null && commNoValue !== "") {
-                            lastCommNo = commNoValue;
-                          }
-                          const empty2Value = row["__EMPTY_2"];
-                          if (empty2Value !== undefined && empty2Value !== null && empty2Value !== "") {
-                            lastEmpty2 = empty2Value;
-                          }
-                          return {
-                            "MDP703b - Product Labeling Data Ext.": lastMDP703b,
-                            "Communication no.": lastCommNo,
-                            "__EMPTY_2": lastEmpty2
-                          };
-                        });
-                      })(),
-                      null,
-                      2
-                    )}
-                    {excelData.rows.length > 3 && "\n  ..."}
-                  </pre>
-                </div>
-              </Card>
-            )}
-
-            <Card className="p-6 border-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <h3 className="text-xl font-semibold mb-4">Query JSON Data</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Upload a JSON file and query its keys
-              </p>
-
-              <div className="space-y-4">
-                {!uploadedJSON ? (
-                  <div>
-                    <input
-                      type="file"
-                      accept=".json"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleJSONUpload(file);
-                      }}
-                      className="hidden"
-                      id="json-file-input"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="lg" 
-                      className="w-full"
-                      onClick={() => document.getElementById('json-file-input')?.click()}
-                    >
-                      <Upload className="mr-2 h-5 w-5" />
-                      Upload JSON File
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <FileSpreadsheet className="h-5 w-5 text-primary" />
-                        <span className="text-sm font-medium">{jsonFileName}</span>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => {
-                          setUploadedJSON(null);
-                          setJsonFileName("");
-                          setQueryKey("");
-                          setQueryResult(null);
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Query Key:</label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="text"
-                          placeholder='e.g., "documents[0].fields.SKU_Front"'
-                          value={queryKey}
-                          onChange={(e) => setQueryKey(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleQuery()}
-                        />
-                        <Button 
-                          onClick={handleQuery}
-                          className="gap-2"
-                        >
-                          <Search className="h-5 w-5" />
-                          Query
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Supports dot notation and array indexing (e.g., "documents[0].fields.SKU_Front")
-                      </p>
-                    </div>
-
-                    {queryResult !== null && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-semibold mb-2">Result for "{queryKey}":</h4>
-                        <div className="bg-secondary/50 p-4 rounded-lg max-h-96 overflow-auto">
-                          <pre className="text-xs font-mono">
-                            {typeof queryResult === 'object' 
-                              ? JSON.stringify(queryResult, null, 2)
-                              : String(queryResult)
-                            }
-                          </pre>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </Card>
-
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+              <FileCheck className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Document Intelligence Analysis
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Upload your PDF document to extract and analyze data using Azure AI
+            </p>
           </div>
-        )}
+
+          {/* Resource Details */}
+          {azureEndpoint && apiVersion && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <ResourceDetails
+                endpoint={azureEndpoint}
+                apiVersion={apiVersion}
+                customModels={customCount}
+              />
+            </div>
+          )}
+
+          {/* Model Selection */}
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex gap-2 items-center justify-center">
+              {customModels.length > 0 ? (
+                <Select value={selectedModelId} onValueChange={setSelectedModelId}>
+                  <SelectTrigger className="w-[400px]">
+                    <SelectValue placeholder="Select a custom model" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50 max-h-[300px]">
+                    {customModels.map((model) => (
+                      <SelectItem key={model.modelId} value={model.modelId}>
+                        {model.description || model.modelId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                  <SelectTrigger className="w-[300px]">
+                    <SelectValue placeholder="Select a project" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name} ({project.id})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button variant="outline" onClick={loadModels} disabled={isLoadingModels}>
+                {isLoadingModels ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-4 h-4 mr-2" />
+                    Load Models
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* File Upload Section */}
+          <FileUpload
+            onFileSelect={handleFileSelect}
+            onExcelSelect={handleExcelFileSelect}
+            pdfFile={pdfFile}
+            excelFile={excelFile}
+          />
+
+          {/* Cascading Dropdowns Section */}
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <CascadingDropdowns />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-center gap-4">
+            <Button
+              onClick={analyzePdf}
+              disabled={!pdfFile || !selectedModelId || isAnalyzing}
+              size="lg"
+              className="px-8"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-5 h-5 mr-2" />
+                  Analyze Document
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={uploadExcelToDatabase}
+              disabled={!excelFile || isUploading}
+              size="lg"
+              className="px-8"
+              variant="secondary"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-5 h-5 mr-2" />
+                  Upload to Database
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Analysis Results */}
+          {analysisResults && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-card rounded-lg border p-6 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">PDF Analysis Results</h3>
+                  <Button onClick={downloadAnalysisCSV} variant="outline" size="sm">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download CSV
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {Object.entries(analysisResults.fields || {}).map(([key, value]: [string, any]) => (
+                    <div key={key} className="flex justify-between items-start p-3 bg-muted/50 rounded">
+                      <span className="font-medium text-sm">{key}:</span>
+                      <span className="text-sm text-muted-foreground ml-4">{String(value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );
