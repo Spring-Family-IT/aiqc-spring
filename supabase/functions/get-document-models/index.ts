@@ -14,10 +14,8 @@ serve(async (req) => {
   try {
     const { projectId, fetchProjects } = await req.json().catch(() => ({}));
     
-    //const azureKey = Deno.env.get('AZURE_DOCUMENT_INTELLIGENCE_KEY');
-    //const azureEndpoint = Deno.env.get('AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT');
-    const azureKey = "B38cxBw2jvGqCp5gpjXc8nhhjCoBkYcBN2lTx6EfuYQ3rW2tDwSAJQQJ99BJACYeBjFXJ3w3AAALACOGRFi6";
-    const azureEndpoint = "https://sp-pack-processing.cognitiveservices.azure.com/";
+    const azureKey = Deno.env.get('AZURE_DOCUMENT_INTELLIGENCE_KEY');
+    const azureEndpoint = Deno.env.get('AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT');
     const apiVersion = '2023-07-31';
 
     if (!azureKey || !azureEndpoint) {
