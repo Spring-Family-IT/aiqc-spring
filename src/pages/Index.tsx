@@ -146,14 +146,14 @@ const Index = () => {
         delete productData.components;
 
         // Insert product
-        const { data: product, error: productError } = await supabase
+        const { data: product, error: productError } = await (supabase as any)
           .from('products')
           .insert({
             ...productData,
             user_id: session.user.id
           })
           .select()
-          .single();
+          .single() as { data: any; error: any };
 
         if (productError) {
           console.error('Error inserting product:', productError);
@@ -169,7 +169,7 @@ const Index = () => {
             product_id: product.id
           }));
 
-          const { error: componentsError } = await supabase
+          const { error: componentsError } = await (supabase as any)
             .from('product_components')
             .insert(componentsWithProductId);
 
