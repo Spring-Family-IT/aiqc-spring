@@ -1,5 +1,11 @@
 project_id = "zxvyezvwusffjiznpida"
 
+[functions.analyze-document]
+verify_jwt = false
+
+[functions.compare-documents]
+verify_jwt = false
+
 [functions.get-document-models]
 verify_jwt = false
 
