@@ -243,20 +243,15 @@ const Index = () => {
 
   const handleSelectedInputsChange = (inputs: { column: string; value: string }[]) => {
     setSelectedInputs(inputs);
-    
-    // Auto-trigger comparison if we have PDF, model, and at least one input
-    if (pdfFile && selectedModelId && inputs.length > 0) {
-      comparePdfWithSelectedInputs(inputs);
-    }
   };
 
-  const comparePdfWithSelectedInputs = async (inputs: { column: string; value: string }[]) => {
-    if (!pdfFile || !selectedModelId) {
-      return;
-    }
-
-    if (inputs.length === 0) {
-      setComparisonResults(null);
+  const comparePdfWithSelectedInputs = async () => {
+    if (!pdfFile || !selectedModelId || selectedInputs.length === 0) {
+      toast({
+        title: "Missing Requirements",
+        description: "Please upload a PDF, select a model, and check at least one field",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -265,7 +260,7 @@ const Index = () => {
     try {
       const formData = new FormData();
       formData.append('pdf', pdfFile);
-      formData.append('selectedInputs', JSON.stringify(inputs));
+      formData.append('selectedInputs', JSON.stringify(selectedInputs));
       formData.append('modelId', selectedModelId);
 
       const { data, error } = await supabase.functions.invoke('compare-documents', {
@@ -602,6 +597,26 @@ const Index = () => {
             </Button>
 
             <Button
+              onClick={comparePdfWithSelectedInputs}
+              disabled={!pdfFile || !selectedModelId || selectedInputs.length === 0 || isComparing}
+              size="lg"
+              className="px-8"
+              variant="default"
+            >
+              {isComparing ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                <>
+                  <GitCompare className="w-5 h-5 mr-2" />
+                  Check
+                </>
+              )}
+            </Button>
+
+            <Button
               onClick={uploadExcelToDatabase}
               disabled={!excelFile || isUploading}
               size="lg"
@@ -621,14 +636,6 @@ const Index = () => {
               )}
             </Button>
           </div>
-
-          {/* Checking Status */}
-          {isComparing && (
-            <div className="flex items-center justify-center gap-2 text-primary">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-lg font-medium">Checking...</span>
-            </div>
-          )}
 
           {/* Comparison Results */}
           {comparisonResults && (

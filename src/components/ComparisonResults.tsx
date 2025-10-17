@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ComparisonData {
@@ -91,52 +92,60 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
       </Card>
 
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Field Comparison</h3>
-        <ScrollArea className="h-[400px]">
-          <div className="space-y-3">
-            {results.map((result, index) => {
-              const bgColor = 
-                result.status === 'correct' ? 'bg-success/5 border-success/20' :
-                result.status === 'incorrect' ? 'bg-destructive/5 border-destructive/20' :
-                'bg-warning/5 border-warning/20';
-                
-              const icon = 
-                result.status === 'correct' ? <CheckCircle2 className="w-4 h-4 text-success" /> :
-                result.status === 'incorrect' ? <XCircle className="w-4 h-4 text-destructive" /> :
-                <AlertCircle className="w-4 h-4 text-warning" />;
-                
-              return (
-                <Card 
-                  key={index} 
-                  className={`p-4 ${bgColor}`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{result.field}</span>
-                      {icon}
-                    </div>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground mb-1">PDF Value:</p>
-                      <p className="font-mono bg-background/50 p-2 rounded">
-                        {Array.isArray(result.pdfValue) 
-                          ? result.pdfValue.join(', ') 
-                          : result.pdfValue}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground mb-1">Excel Value:</p>
-                      <p className="font-mono bg-background/50 p-2 rounded">{result.excelValue}</p>
-                    </div>
-                  </div>
-                  {result.matchDetails && (
-                    <p className="text-xs text-muted-foreground mt-2 italic">{result.matchDetails}</p>
-                  )}
-                </Card>
-              );
-            })}
-          </div>
+        <h3 className="text-lg font-semibold mb-4">Field Comparison Report</h3>
+        <ScrollArea className="h-[500px]">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[200px]">Field Name</TableHead>
+                <TableHead>Excel Value</TableHead>
+                <TableHead>PDF Value</TableHead>
+                <TableHead className="w-[150px]">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {results.map((result, index) => {
+                const statusBadge = 
+                  result.status === 'correct' ? (
+                    <Badge variant="default" className="bg-success text-success-foreground">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      CORRECT
+                    </Badge>
+                  ) : result.status === 'incorrect' ? (
+                    <Badge variant="destructive">
+                      <XCircle className="w-3 h-3 mr-1" />
+                      INCORRECT
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-warning text-warning-foreground">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      NOT FOUND
+                    </Badge>
+                  );
+
+                const rowClass = 
+                  result.status === 'correct' ? 'bg-success/5' :
+                  result.status === 'incorrect' ? 'bg-destructive/5' :
+                  'bg-warning/5';
+                  
+                return (
+                  <TableRow key={index} className={rowClass}>
+                    <TableCell className="font-medium">{result.field}</TableCell>
+                    <TableCell className="font-mono text-sm">{result.excelValue}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {Array.isArray(result.pdfValue) 
+                        ? result.pdfValue.join(', ') 
+                        : result.pdfValue}
+                      {result.matchDetails && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">{result.matchDetails}</p>
+                      )}
+                    </TableCell>
+                    <TableCell>{statusBadge}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </ScrollArea>
       </Card>
     </div>
