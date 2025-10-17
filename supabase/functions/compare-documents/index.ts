@@ -226,45 +226,42 @@ serve(async (req) => {
         
       } 
       // Handle array mapping (one Excel column maps to multiple PDF fields)
+      // Create separate rows for each PDF field
       else if (Array.isArray(mappedPdfFields)) {
-        const pdfValues: string[] = [];
-        const foundFields: string[] = [];
-        const missingFields: string[] = [];
-        
         for (const pdfFieldId of mappedPdfFields) {
-          if (pdfData[pdfFieldId]) {
-            pdfValues.push(pdfData[pdfFieldId]);
-            foundFields.push(pdfFieldId);
+          const pdfValue = pdfData[pdfFieldId];
+          const excelValueStr = String(excelValue);
+          
+          if (!pdfValue) {
+            comparisonResults.push({
+              field: `${excelColumnName} (${pdfFieldId})`,
+              pdfValue: 'Not found in PDF',
+              excelValue: excelValueStr,
+              status: 'not-found',
+              matchDetails: `Expected PDF field: ${pdfFieldId}`
+            });
           } else {
-            missingFields.push(pdfFieldId);
+            // Apply special rules if needed
+            let normalizedPdfValue = pdfValue;
+            let normalizedExcelValue = excelValueStr;
+            
+            const specialRule = SPECIAL_RULES[pdfFieldId];
+            if (specialRule?.removeSpaces) {
+              normalizedPdfValue = normalizedPdfValue.replace(/\s+/g, '');
+              normalizedExcelValue = normalizedExcelValue.replace(/\s+/g, '');
+            }
+            
+            // Compare individual values
+            const match = normalizedPdfValue.toLowerCase() === normalizedExcelValue.toLowerCase();
+            
+            comparisonResults.push({
+              field: `${excelColumnName} (${pdfFieldId})`,
+              pdfValue: pdfValue, // Original value for display
+              excelValue: excelValueStr,
+              status: match ? 'correct' : 'incorrect'
+            });
           }
         }
-        
-        if (pdfValues.length === 0) {
-          // None of the expected fields were found
-          comparisonResults.push({
-            field: excelColumnName,
-            pdfValue: 'Not found in PDF',
-            excelValue: String(excelValue),
-            status: 'not-found',
-            matchDetails: `Expected one of: ${mappedPdfFields.join(', ')}`
-          });
-          continue;
-        }
-        
-        // Check if Excel value matches ANY of the PDF values
-        const excelValueStr = String(excelValue).toLowerCase();
-        const match = pdfValues.some(pdfVal => pdfVal.toLowerCase() === excelValueStr);
-        
-        comparisonResults.push({
-          field: excelColumnName,
-          pdfValue: pdfValues, // Array of values
-          excelValue: String(excelValue),
-          status: match ? 'correct' : 'incorrect',
-          matchDetails: foundFields.length < mappedPdfFields.length 
-            ? `Found in: ${foundFields.join(', ')}. Missing: ${missingFields.join(', ')}`
-            : `Found in: ${foundFields.join(', ')}`
-        });
       }
     }
 

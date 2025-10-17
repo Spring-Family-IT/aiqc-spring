@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ComparisonData {
   field: string;
-  pdfValue: string | string[];
+  pdfValue: string;
   excelValue: string;
   status: 'correct' | 'incorrect' | 'not-found';
   matchDetails?: string;
@@ -133,9 +133,7 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
                     <TableCell className="font-medium">{result.field}</TableCell>
                     <TableCell className="font-mono text-sm">{result.excelValue}</TableCell>
                     <TableCell className="font-mono text-sm">
-                      {Array.isArray(result.pdfValue) 
-                        ? result.pdfValue.join(', ') 
-                        : result.pdfValue}
+                      {result.pdfValue}
                       {result.matchDetails && (
                         <p className="text-xs text-muted-foreground mt-1 italic">{result.matchDetails}</p>
                       )}
