@@ -25,6 +25,7 @@ const Index = () => {
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [comparisonResults, setComparisonResults] = useState<any>(null);
   const [excelData, setExcelData] = useState<any[]>([]);
+  const [selectedInputs, setSelectedInputs] = useState<{ column: string; value: string }[]>([]);
   const [models, setModels] = useState<any[]>([]);
   const [customModels, setCustomModels] = useState<any[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
@@ -240,32 +241,31 @@ const Index = () => {
     });
   };
 
-  const comparePdfWithExcel = async () => {
-    if (!pdfFile || !excelFile || !selectedModelId) {
-      toast({
-        title: "Missing Information",
-        description: "Please select both PDF and Excel files, and choose a model",
-        variant: "destructive",
-      });
+  const handleSelectedInputsChange = (inputs: { column: string; value: string }[]) => {
+    setSelectedInputs(inputs);
+    
+    // Auto-trigger comparison if we have PDF, model, and at least one input
+    if (pdfFile && selectedModelId && inputs.length > 0) {
+      comparePdfWithSelectedInputs(inputs);
+    }
+  };
+
+  const comparePdfWithSelectedInputs = async (inputs: { column: string; value: string }[]) => {
+    if (!pdfFile || !selectedModelId) {
       return;
     }
 
-    if (excelData.length === 0) {
-      toast({
-        title: "Excel data not loaded",
-        description: "Please wait for Excel file to be processed",
-        variant: "destructive",
-      });
+    if (inputs.length === 0) {
+      setComparisonResults(null);
       return;
     }
 
     setIsComparing(true);
-    setComparisonResults(null);
     
     try {
       const formData = new FormData();
       formData.append('pdf', pdfFile);
-      formData.append('excelData', JSON.stringify(excelData));
+      formData.append('selectedInputs', JSON.stringify(inputs));
       formData.append('modelId', selectedModelId);
 
       const { data, error } = await supabase.functions.invoke('compare-documents', {
@@ -278,16 +278,17 @@ const Index = () => {
       setComparisonResults(data.results);
       
       toast({
-        title: "Comparison Complete",
+        title: "Checking Complete",
         description: `${data.summary.correct} correct, ${data.summary.incorrect} incorrect, ${data.summary.notFound} not found`,
       });
     } catch (error) {
       console.error('Comparison error:', error);
       toast({
-        title: "Comparison Failed",
-        description: error instanceof Error ? error.message : "Failed to compare documents",
+        title: "Checking Failed",
+        description: error instanceof Error ? error.message : "Failed to check documents",
         variant: "destructive",
       });
+      setComparisonResults(null);
     } finally {
       setIsComparing(false);
     }
@@ -576,7 +577,7 @@ const Index = () => {
 
           {/* Cascading Dropdowns Section */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <CascadingDropdowns />
+            <CascadingDropdowns onSelectedInputsChange={handleSelectedInputsChange} />
           </div>
 
           {/* Action Buttons */}
@@ -601,26 +602,6 @@ const Index = () => {
             </Button>
 
             <Button
-              onClick={comparePdfWithExcel}
-              disabled={!pdfFile || !excelFile || !selectedModelId || isComparing}
-              size="lg"
-              className="px-8"
-              variant="outline"
-            >
-              {isComparing ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Comparing...
-                </>
-              ) : (
-                <>
-                  <GitCompare className="w-5 h-5 mr-2" />
-                  Compare with Excel
-                </>
-              )}
-            </Button>
-
-            <Button
               onClick={uploadExcelToDatabase}
               disabled={!excelFile || isUploading}
               size="lg"
@@ -640,6 +621,14 @@ const Index = () => {
               )}
             </Button>
           </div>
+
+          {/* Checking Status */}
+          {isComparing && (
+            <div className="flex items-center justify-center gap-2 text-primary">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-lg font-medium">Checking...</span>
+            </div>
+          )}
 
           {/* Comparison Results */}
           {comparisonResults && (

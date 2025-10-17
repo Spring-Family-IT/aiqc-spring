@@ -29,15 +29,18 @@ serve(async (req) => {
   try {
     const formData = await req.formData();
     const pdfFile = formData.get('pdf') as File;
-    const excelData = JSON.parse(formData.get('excelData') as string);
+    const selectedInputsData = formData.get('selectedInputs') as string;
     const modelId = formData.get('modelId') as string;
 
-    if (!pdfFile || !excelData) {
+    if (!pdfFile || !selectedInputsData) {
       return new Response(
-        JSON.stringify({ error: 'Missing PDF file or Excel data' }),
+        JSON.stringify({ error: 'Missing PDF file or selected inputs' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Parse selected inputs: [{ column: string, value: string }]
+    const selectedInputs = JSON.parse(selectedInputsData);
 
     if (!modelId) {
       return new Response(
@@ -167,13 +170,12 @@ serve(async (req) => {
     }
 
     console.log(`Extracted ${Object.keys(pdfData).length} fields from PDF`);
-    console.log('Comparing with Excel data using field mappings...');
+    console.log('Comparing with selected inputs using field mappings...');
 
-    // Compare PDF data with Excel data using field mappings
+    // Compare PDF data with selected inputs using field mappings
     const comparisonResults = [];
-    const excelRow = excelData[0] || {};
     
-    for (const [excelColumnName, excelValue] of Object.entries(excelRow)) {
+    for (const { column: excelColumnName, value: excelValue } of selectedInputs) {
       // Get the mapped PDF field(s) for this Excel column
       const mappedPdfFields = LP5_MAPPING[excelColumnName];
       

@@ -11,7 +11,11 @@ interface ExcelData {
   [key: string]: string | number | null;
 }
 
-export const CascadingDropdowns = () => {
+interface CascadingDropdownsProps {
+  onSelectedInputsChange?: (inputs: { column: string; value: string }[]) => void;
+}
+
+export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdownsProps) => {
   const [excelData, setExcelData] = useState<ExcelData[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [selectedValues, setSelectedValues] = useState<{ [key: string]: string }>({});
@@ -123,10 +127,22 @@ export const CascadingDropdowns = () => {
   };
 
   const handleCheckboxChange = (column: string, checked: boolean) => {
-    setCheckedColumns(prev => ({
-      ...prev,
+    const newCheckedColumns = {
+      ...checkedColumns,
       [column]: checked
-    }));
+    };
+    setCheckedColumns(newCheckedColumns);
+    
+    // Calculate new selected inputs and notify parent
+    const newSelectedInputs = Object.entries(newCheckedColumns)
+      .filter(([_, isChecked]) => isChecked)
+      .map(([col]) => ({
+        column: col,
+        value: selectedValues[col] || ''
+      }))
+      .filter(item => item.value !== '');
+    
+    onSelectedInputsChange?.(newSelectedInputs);
   };
 
   const getSelectedInputs = () => {
