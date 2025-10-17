@@ -22,13 +22,13 @@ export const LP5_FIELD_MAPPING: FieldMappingConfig = {
     "Communication no.": ["SKU_Front", "SKU_Left", "SKU_Right", "SKU_Top", "SKU_Bottom", "SKU_Back"],
     "Product Age Classification": "AgeMark",
     "Product Version no.": "Version",
-    "Piece count of FG": "Piece count",
+    "Piece count of FG": "PieceCount",
     Component: ["Material Number_Info Box", "MaterialBottom", "MaterialSide"],
     "Finished Goods Material Number": "ItemNumber",
     "EAN/UPC": "BarcodeString",
   },
   specialRules: {
-    BarCodeString: {
+    BarcodeString: {
       removeSpaces: true,
     },
   },
