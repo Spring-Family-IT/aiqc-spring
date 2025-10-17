@@ -6,6 +6,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// LP5 Model Field Mapping (matches src/config/fieldMappings.ts)
+const LP5_MAPPING: Record<string, string | string[]> = {
+  "Communication no.": ["SKU_Front", "SKU_Left", "SKU_Right", "SKU_Top", "SKU_Bottom", "SKU_Back"],
+  "Product Age Classification": "AgeMark",
+  "Product Version no.": "Version",
+  "Piece count of FG": "Piece count",
+  "Component": ["Material Number_Info Box", "MaterialBottom", "MaterialSide"],
+  "Finished Goods Material Number": "ItemNumber",
+  "EAN/UPC": "BarCodeString"
+};
+
+const SPECIAL_RULES: Record<string, { removeSpaces?: boolean; toLowerCase?: boolean }> = {
+  "BarCodeString": { removeSpaces: true }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -114,22 +129,33 @@ serve(async (req) => {
       );
     }
 
-    console.log('Analysis complete, extracting data...');
+    console.log('Analysis complete, extracting data with original field names...');
 
-    // Extract key-value pairs from the PDF
+    // Extract data from PDF preserving original field names (not lowercased)
     const pdfData: Record<string, string> = {};
     
+    // Extract from document fields
+    if (analysisResult.documents && analysisResult.documents[0]) {
+      const doc = analysisResult.documents[0];
+      for (const [fieldName, fieldValue] of Object.entries(doc.fields || {})) {
+        if (fieldValue && (fieldValue as any).content !== undefined) {
+          pdfData[fieldName] = String((fieldValue as any).content).trim();
+        }
+      }
+    }
+
+    // Extract from keyValuePairs with original keys
     if (analysisResult.keyValuePairs) {
       for (const kvp of analysisResult.keyValuePairs) {
         if (kvp.key && kvp.value) {
           const keyText = kvp.key.content || '';
           const valueText = kvp.value.content || '';
-          pdfData[keyText.toLowerCase().trim()] = valueText.trim();
+          pdfData[keyText.trim()] = valueText.trim();
         }
       }
     }
 
-    // Also extract from tables if present
+    // Extract from tables if present
     if (analysisResult.tables) {
       for (const table of analysisResult.tables) {
         for (const cell of table.cells) {
@@ -140,33 +166,120 @@ serve(async (req) => {
       }
     }
 
-    console.log('Comparing with Excel data...');
+    console.log(`Extracted ${Object.keys(pdfData).length} fields from PDF`);
+    console.log('Comparing with Excel data using field mappings...');
 
-    // Compare PDF data with Excel data
+    // Compare PDF data with Excel data using field mappings
     const comparisonResults = [];
-    
-    // Get the first row of Excel data for comparison
     const excelRow = excelData[0] || {};
     
-    for (const [excelKey, excelValue] of Object.entries(excelRow)) {
-      const normalizedKey = excelKey.toLowerCase().trim();
-      const pdfValue = pdfData[normalizedKey] || '';
-      const excelValueStr = String(excelValue);
+    for (const [excelColumnName, excelValue] of Object.entries(excelRow)) {
+      // Get the mapped PDF field(s) for this Excel column
+      const mappedPdfFields = LP5_MAPPING[excelColumnName];
       
-      const match = pdfValue.toLowerCase() === excelValueStr.toLowerCase();
+      if (!mappedPdfFields) {
+        // No mapping defined - this is a "not found" case
+        comparisonResults.push({
+          field: excelColumnName,
+          pdfValue: 'Not found',
+          excelValue: String(excelValue),
+          status: 'not-found',
+          matchDetails: 'No mapping configured for this field'
+        });
+        continue;
+      }
       
-      comparisonResults.push({
-        field: excelKey,
-        pdfValue: pdfValue || 'Not found',
-        excelValue: excelValueStr,
-        match,
-      });
+      // Handle single field mapping
+      if (typeof mappedPdfFields === 'string') {
+        const pdfFieldId = mappedPdfFields;
+        let pdfValue = pdfData[pdfFieldId];
+        let excelValueStr = String(excelValue);
+        
+        if (!pdfValue) {
+          comparisonResults.push({
+            field: excelColumnName,
+            pdfValue: 'Not found in PDF',
+            excelValue: excelValueStr,
+            status: 'not-found',
+            matchDetails: `Expected PDF field: ${pdfFieldId}`
+          });
+          continue;
+        }
+        
+        // Apply special rules if defined
+        const specialRule = SPECIAL_RULES[pdfFieldId];
+        if (specialRule?.removeSpaces) {
+          pdfValue = pdfValue.replace(/\s+/g, '');
+          excelValueStr = excelValueStr.replace(/\s+/g, '');
+        }
+        
+        // Compare
+        const match = pdfValue.toLowerCase() === excelValueStr.toLowerCase();
+        comparisonResults.push({
+          field: excelColumnName,
+          pdfValue: pdfData[pdfFieldId], // Original value for display
+          excelValue: String(excelValue),
+          status: match ? 'correct' : 'incorrect'
+        });
+        
+      } 
+      // Handle array mapping (one Excel column maps to multiple PDF fields)
+      else if (Array.isArray(mappedPdfFields)) {
+        const pdfValues: string[] = [];
+        const foundFields: string[] = [];
+        const missingFields: string[] = [];
+        
+        for (const pdfFieldId of mappedPdfFields) {
+          if (pdfData[pdfFieldId]) {
+            pdfValues.push(pdfData[pdfFieldId]);
+            foundFields.push(pdfFieldId);
+          } else {
+            missingFields.push(pdfFieldId);
+          }
+        }
+        
+        if (pdfValues.length === 0) {
+          // None of the expected fields were found
+          comparisonResults.push({
+            field: excelColumnName,
+            pdfValue: 'Not found in PDF',
+            excelValue: String(excelValue),
+            status: 'not-found',
+            matchDetails: `Expected one of: ${mappedPdfFields.join(', ')}`
+          });
+          continue;
+        }
+        
+        // Check if Excel value matches ANY of the PDF values
+        const excelValueStr = String(excelValue).toLowerCase();
+        const match = pdfValues.some(pdfVal => pdfVal.toLowerCase() === excelValueStr);
+        
+        comparisonResults.push({
+          field: excelColumnName,
+          pdfValue: pdfValues, // Array of values
+          excelValue: String(excelValue),
+          status: match ? 'correct' : 'incorrect',
+          matchDetails: foundFields.length < mappedPdfFields.length 
+            ? `Found in: ${foundFields.join(', ')}. Missing: ${missingFields.join(', ')}`
+            : `Found in: ${foundFields.join(', ')}`
+        });
+      }
     }
 
-    console.log(`Comparison complete: ${comparisonResults.length} fields compared`);
+    const summary = {
+      total: comparisonResults.length,
+      correct: comparisonResults.filter(r => r.status === 'correct').length,
+      incorrect: comparisonResults.filter(r => r.status === 'incorrect').length,
+      notFound: comparisonResults.filter(r => r.status === 'not-found').length
+    };
+
+    console.log(`Comparison complete: ${summary.correct} correct, ${summary.incorrect} incorrect, ${summary.notFound} not found`);
 
     return new Response(
-      JSON.stringify({ results: comparisonResults }),
+      JSON.stringify({ 
+        results: comparisonResults,
+        summary
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

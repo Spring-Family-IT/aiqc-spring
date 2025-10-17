@@ -6,12 +6,14 @@ import { ModelsList } from "@/components/ModelsList";
 import { ResourceDetails } from "@/components/ResourceDetails";
 import { ProjectsList } from "@/components/ProjectsList";
 import { CascadingDropdowns } from "@/components/CascadingDropdowns";
+import { ComparisonResults } from "@/components/ComparisonResults";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload } from "lucide-react";
+import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompare } from "lucide-react";
 import { Session } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
+import { getFieldMapping } from "@/config/fieldMappings";
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -19,7 +21,10 @@ const Index = () => {
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isComparing, setIsComparing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
+  const [comparisonResults, setComparisonResults] = useState<any>(null);
+  const [excelData, setExcelData] = useState<any[]>([]);
   const [models, setModels] = useState<any[]>([]);
   const [customModels, setCustomModels] = useState<any[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
@@ -64,8 +69,20 @@ const Index = () => {
     setAnalysisResults(null);
   };
 
-  const handleExcelFileSelect = (file: File) => {
+  const handleExcelFileSelect = async (file: File) => {
     setExcelFile(file);
+    
+    // Parse Excel file for comparison
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      setExcelData(jsonData);
+    } catch (error) {
+      console.error('Error parsing Excel file:', error);
+    }
   };
 
   const uploadExcelToDatabase = async () => {
@@ -221,6 +238,59 @@ const Index = () => {
       title: "CSV downloaded",
       description: `Analysis results saved as ${fileName}`,
     });
+  };
+
+  const comparePdfWithExcel = async () => {
+    if (!pdfFile || !excelFile || !selectedModelId) {
+      toast({
+        title: "Missing Information",
+        description: "Please select both PDF and Excel files, and choose a model",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (excelData.length === 0) {
+      toast({
+        title: "Excel data not loaded",
+        description: "Please wait for Excel file to be processed",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsComparing(true);
+    setComparisonResults(null);
+    
+    try {
+      const formData = new FormData();
+      formData.append('pdf', pdfFile);
+      formData.append('excelData', JSON.stringify(excelData));
+      formData.append('modelId', selectedModelId);
+
+      const { data, error } = await supabase.functions.invoke('compare-documents', {
+        body: formData,
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setComparisonResults(data.results);
+      
+      toast({
+        title: "Comparison Complete",
+        description: `${data.summary.correct} correct, ${data.summary.incorrect} incorrect, ${data.summary.notFound} not found`,
+      });
+    } catch (error) {
+      console.error('Comparison error:', error);
+      toast({
+        title: "Comparison Failed",
+        description: error instanceof Error ? error.message : "Failed to compare documents",
+        variant: "destructive",
+      });
+    } finally {
+      setIsComparing(false);
+    }
   };
 
   const analyzePdf = async () => {
@@ -510,7 +580,7 @@ const Index = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 flex-wrap">
             <Button
               onClick={analyzePdf}
               disabled={!pdfFile || !selectedModelId || isAnalyzing}
@@ -526,6 +596,26 @@ const Index = () => {
                 <>
                   <FileText className="w-5 h-5 mr-2" />
                   Analyze Document
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={comparePdfWithExcel}
+              disabled={!pdfFile || !excelFile || !selectedModelId || isComparing}
+              size="lg"
+              className="px-8"
+              variant="outline"
+            >
+              {isComparing ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Comparing...
+                </>
+              ) : (
+                <>
+                  <GitCompare className="w-5 h-5 mr-2" />
+                  Compare with Excel
                 </>
               )}
             </Button>
@@ -550,6 +640,13 @@ const Index = () => {
               )}
             </Button>
           </div>
+
+          {/* Comparison Results */}
+          {comparisonResults && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <ComparisonResults results={comparisonResults} />
+            </div>
+          )}
 
           {/* Analysis Results */}
           {analysisResults && (
