@@ -1,13 +1,37 @@
 project_id = "zxvyezvwusffjiznpida"
 
+# =============================================================================
+# EDGE FUNCTIONS CONFIGURATION
+# =============================================================================
+# All functions currently have JWT verification disabled for development.
+# TODO: Enable verify_jwt = true for production deployment
+# Last modified: 2025-10-17
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Document Analysis Functions
+# -----------------------------------------------------------------------------
+
 [functions.analyze-document]
 verify_jwt = false
+# Analyzes PDF documents using Azure Document Intelligence models
 
 [functions.compare-documents]
 verify_jwt = false
+# Compares PDF extraction results with Excel reference data
+
+# -----------------------------------------------------------------------------
+# Model Management Functions
+# -----------------------------------------------------------------------------
 
 [functions.get-document-models]
 verify_jwt = false
+# Retrieves available Azure Document Intelligence models and projects
+
+# -----------------------------------------------------------------------------
+# System Health Functions
+# -----------------------------------------------------------------------------
 
 [functions.health-check]
 verify_jwt = false
+# Health check endpoint for monitoring service availability
