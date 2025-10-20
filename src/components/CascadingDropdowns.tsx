@@ -180,6 +180,110 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
       .filter(item => item.value !== '');
   };
 
+  // Debug helper functions
+  const filterDataUpToIndex = (columnIndex: number) => {
+    let filtered = [...excelData];
+    for (let i = 0; i < columnIndex; i++) {
+      const selectedValue = selectedValues[columns[i]];
+      if (selectedValue) {
+        const selectedValueTrimmed = selectedValue.trim();
+        filtered = filtered.filter(row => {
+          const rowValue = String(row[columns[i]] || '').trim();
+          return rowValue && selectedValueTrimmed && rowValue === selectedValueTrimmed;
+        });
+      }
+    }
+    return filtered;
+  };
+
+  const downloadJson = (data: unknown, filename: string) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const buildGroupedSummary = () => {
+    const eq = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+    const commIdxExact = columns.findIndex(h => eq(h, 'Communication no.'));
+    const versIdxExact = columns.findIndex(h => eq(h, 'Product Version no.'));
+    const nameDepIdx = columns.findIndex(h => eq(h, 'Name of Dependency'));
+
+    const commIdxLoose = columns.findIndex(h => /communication/.test(h.toLowerCase()) && /no|number/.test(h.toLowerCase()));
+    const versIdxLoose = columns.findIndex(h => /product/.test(h.toLowerCase()) && /version/.test(h.toLowerCase()));
+
+    const commIdx = commIdxExact >= 0 ? commIdxExact : commIdxLoose;
+    const versIdx = versIdxExact >= 0 ? versIdxExact : versIdxLoose;
+
+    const summary: any = {
+      headers: columns,
+      indices: { commIdx, versIdx, nameDepIdx },
+      groups: {} as Record<string, Record<string, any>>
+    };
+
+    if (commIdx < 0 || versIdx < 0) {
+      summary.error = 'Could not locate Communication no. or Product Version no. columns in headers';
+      return summary;
+    }
+
+    for (const row of excelData) {
+      const comm = String(row[columns[commIdx]] ?? '').trim();
+      const ver = String(row[columns[versIdx]] ?? '').trim();
+      if (!comm || !ver) continue;
+
+      summary.groups[comm] ||= {};
+      const slot = (summary.groups[comm][ver] ||= {
+        rowCount: 0,
+        distinct: {
+          name_of_dependency: [] as string[],
+        },
+        sampleRows: [] as any[]
+      });
+
+      slot.rowCount += 1;
+
+      if (nameDepIdx >= 0) {
+        const dep = String(row[columns[nameDepIdx]] ?? '').trim();
+        if (dep && !slot.distinct.name_of_dependency.includes(dep)) {
+          slot.distinct.name_of_dependency.push(dep);
+        }
+      }
+
+      if (slot.sampleRows.length < 10) {
+        slot.sampleRows.push(row);
+      }
+    }
+
+    return summary;
+  };
+
+  const buildDebugSnapshot = () => {
+    const perColumn = columns.map((col, index) => {
+      const filteredAtStep = filterDataUpToIndex(index);
+      const options = getFilteredOptions(index);
+      return {
+        column: col,
+        selectedValue: selectedValues[col] || null,
+        rowsMatchingUpToThisColumn: filteredAtStep.length,
+        options,
+        sampleRows: filteredAtStep.slice(0, 10)
+      };
+    });
+
+    return {
+      fileName: file?.name || null,
+      totalRows: excelData.length,
+      headers: columns,
+      selections: selectedValues,
+      checkedColumns,
+      perColumn
+    };
+  };
+
   const selectedRow = getSelectedRow();
   const selectedInputs = getSelectedInputs();
 
@@ -205,6 +309,47 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
           </Button>
         </label>
       </div>
+
+      {/* Debug Export Buttons */}
+      {columns.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => downloadJson(excelData, 'raw-excel-rows.json')}
+          >
+            Download raw JSON
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              const lastSelectedIndex = columns.reduce((acc, col, idx) =>
+                selectedValues[col] ? idx : acc, -1);
+              const filtered = lastSelectedIndex >= 0
+                ? filterDataUpToIndex(lastSelectedIndex + 1)
+                : excelData;
+              downloadJson(filtered, 'filtered-rows.json');
+            }}
+          >
+            Download filtered JSON
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => downloadJson(buildGroupedSummary(), 'grouped-comm-version.json')}
+          >
+            Download grouped JSON
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => downloadJson(buildDebugSnapshot(), 'debug-cascade.json')}
+          >
+            Download debug JSON
+          </Button>
+        </div>
+      )}
 
       {/* Cascading Dropdowns */}
       {columns.length > 0 && (
