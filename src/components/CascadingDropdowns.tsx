@@ -54,6 +54,18 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
           return obj;
         });
 
+        // Forward-fill empty cells with previous non-null values
+        headers.forEach((header) => {
+          let lastValue: string | number | null = null;
+          jsonData.forEach((row) => {
+            if (row[header] !== null && row[header] !== undefined && String(row[header]).trim() !== '') {
+              lastValue = row[header];
+            } else if (lastValue !== null) {
+              row[header] = lastValue;
+            }
+          });
+        });
+
         setColumns(headers);
         setExcelData(jsonData);
         setSelectedValues({});
