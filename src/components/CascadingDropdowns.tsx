@@ -20,6 +20,7 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
   const [columns, setColumns] = useState<string[]>([]);
   const [selectedValues, setSelectedValues] = useState<{ [key: string]: string }>({});
   const [checkedColumns, setCheckedColumns] = useState<{ [key: string]: boolean }>({});
+  const [checkAll, setCheckAll] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const { toast } = useToast();
 
@@ -170,6 +171,11 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
     };
     setCheckedColumns(newCheckedColumns);
     
+    // Update checkAll state based on whether all available fields are checked
+    const availableColumns = columns.filter(col => selectedValues[col]);
+    const allAvailableChecked = availableColumns.every(col => newCheckedColumns[col]);
+    setCheckAll(allAvailableChecked && availableColumns.length > 0);
+    
     // Calculate new selected inputs and notify parent
     const newSelectedInputs = Object.entries(newCheckedColumns)
       .filter(([_, isChecked]) => isChecked)
@@ -180,6 +186,34 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
       .filter(item => item.value !== '');
     
     onSelectedInputsChange?.(newSelectedInputs);
+  };
+
+  const handleCheckAllChange = (checked: boolean) => {
+    setCheckAll(checked);
+    
+    if (checked) {
+      // Check all fields that have selected values
+      const newCheckedColumns: { [key: string]: boolean } = {};
+      columns.forEach(col => {
+        if (selectedValues[col]) {
+          newCheckedColumns[col] = true;
+        }
+      });
+      setCheckedColumns(newCheckedColumns);
+      
+      // Notify parent with all selected inputs
+      const allInputs = columns
+        .filter(col => selectedValues[col])
+        .map(col => ({
+          column: col,
+          value: selectedValues[col]
+        }));
+      onSelectedInputsChange?.(allInputs);
+    } else {
+      // Uncheck all
+      setCheckedColumns({});
+      onSelectedInputsChange?.([]);
+    }
   };
 
   const getSelectedInputs = () => {
@@ -363,12 +397,46 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
         </div>
       )}
 
+      {/* Check All Checkbox */}
+      {columns.length > 0 && (
+        <div className="mb-4 p-4 bg-accent/10 rounded-lg border border-accent/20">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="checkbox-all"
+              checked={checkAll}
+              onCheckedChange={(checked) => handleCheckAllChange(checked as boolean)}
+              disabled={columns.every(col => !selectedValues[col])}
+            />
+            <label
+              htmlFor="checkbox-all"
+              className="text-sm font-medium cursor-pointer"
+            >
+              Check All Fields for Comparison
+            </label>
+          </div>
+        </div>
+      )}
+
       {/* Cascading Dropdowns */}
       {columns.length > 0 && (
         <div className="space-y-4">
           {columns.map((column, index) => {
             const options = getFilteredOptions(index);
-            const isDisabled = index > 0 && !selectedValues[columns[index - 1]];
+            
+            // Fix disabled logic: fields after index 11 (Material group) only require first 4 core columns
+            const isDisabled = (() => {
+              if (index === 0) return false; // First dropdown always enabled
+              
+              // For the first cascading columns (up to "Marketing exit date")
+              if (index <= 11) {
+                return !selectedValues[columns[index - 1]];
+              }
+              
+              // For component-level fields (Material group onwards)
+              // Only require the first 4 core columns to be selected
+              const coreColumns = columns.slice(0, 4);
+              return !coreColumns.every(col => selectedValues[col]);
+            })();
             
             return (
               <div key={column} className="space-y-2">
