@@ -82,9 +82,11 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
 
   const getFilteredOptions = (columnIndex: number): string[] => {
     if (columnIndex === 0) {
-      // First dropdown: return all unique values
-      const uniqueValues = [...new Set(excelData.map(row => String(row[columns[0]] || '')))];
-      return uniqueValues.filter(v => v !== '');
+      // First dropdown: return all unique values with proper trimming
+      const uniqueValues = [...new Set(excelData.map(row => 
+        String(row[columns[0]] || '').trim()
+      ))];
+      return uniqueValues.filter(v => v !== '').sort();
     }
 
     // For subsequent dropdowns, filter based on previous selections
@@ -93,12 +95,34 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
     for (let i = 0; i < columnIndex; i++) {
       const selectedValue = selectedValues[columns[i]];
       if (selectedValue) {
-        filteredData = filteredData.filter(row => String(row[columns[i]]) === selectedValue);
+        filteredData = filteredData.filter(row => {
+          const rowValue = String(row[columns[i]] || '').trim();
+          const selectedValueTrimmed = selectedValue.trim();
+          return rowValue && selectedValueTrimmed && rowValue === selectedValueTrimmed;
+        });
       }
     }
 
-    const uniqueValues = [...new Set(filteredData.map(row => String(row[columns[columnIndex]] || '')))];
-    return uniqueValues.filter(v => v !== '');
+    const uniqueValues = [...new Set(filteredData.map(row => 
+      String(row[columns[columnIndex]] || '').trim()
+    ))];
+    return uniqueValues.filter(v => v !== '').sort();
+  };
+
+  const getDebugInfo = (columnIndex: number): number => {
+    if (columnIndex === 0) return excelData.length;
+    
+    let filteredData = [...excelData];
+    for (let i = 0; i < columnIndex; i++) {
+      const selectedValue = selectedValues[columns[i]];
+      if (selectedValue) {
+        filteredData = filteredData.filter(row => {
+          const rowValue = String(row[columns[i]] || '').trim();
+          return rowValue === selectedValue.trim();
+        });
+      }
+    }
+    return filteredData.length;
   };
 
   const handleSelectionChange = (column: string, value: string, columnIndex: number) => {
@@ -121,7 +145,7 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
 
     return excelData.find(row => {
       return Object.entries(selectedValues).every(([key, value]) => {
-        return String(row[key]) === value;
+        return String(row[key] || '').trim() === value.trim();
       });
     }) || null;
   };
@@ -190,7 +214,12 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
             
             return (
               <div key={column} className="space-y-2">
-                <label className="text-sm font-medium">{column}</label>
+                <label className="text-sm font-medium">
+                  {column}
+                  <span className="text-xs text-muted-foreground ml-2">
+                    ({getDebugInfo(index)} rows available)
+                  </span>
+                </label>
                 <div className="flex items-center gap-3">
                   <Select
                     value={selectedValues[column] || ""}
