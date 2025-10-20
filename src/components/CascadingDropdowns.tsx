@@ -118,7 +118,8 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
       if (selectedValue) {
         filteredData = filteredData.filter(row => {
           const rowValue = String(row[columns[i]] || '').trim();
-          return rowValue === selectedValue.trim();
+          const selectedValueTrimmed = selectedValue.trim();
+          return rowValue && selectedValueTrimmed && rowValue === selectedValueTrimmed;
         });
       }
     }
