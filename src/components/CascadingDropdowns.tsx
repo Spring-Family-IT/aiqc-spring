@@ -531,7 +531,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
       {/* Selected Inputs for Function */}
       {selectedInputs.length > 0 && (
         <div className="mt-6 p-4 bg-primary/10 rounded-lg border border-primary/20">
-          <h3 className="font-semibold mb-3">Selected Inputs for Next Function:</h3>
+          <h3 className="font-semibold mb-3">Selected Fields:</h3>
           <div className="space-y-2">
             {selectedInputs.map(({ column, value }) => (
               <div key={column} className="flex items-center gap-2 text-sm">
