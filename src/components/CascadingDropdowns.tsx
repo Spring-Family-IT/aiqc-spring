@@ -58,8 +58,8 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
               // Generate column name like Excel does (A, B, C, ..., Z, AA, AB, etc.)
               const colName = XLSX.utils.encode_col(i);
               
-              // Special case: column O (index 14) should be named "Type"
-              if (i === 14) {
+              // Special case: column P (index 15) should be named "Type"
+              if (i === 15) {
                 header = 'Type';
               } else {
                 header = colName;
@@ -93,7 +93,11 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
             });
           });
 
-          setColumns(headers);
+          // Filter out empty/ignored column names (N, R, W, X, Y, Z)
+          const ignoredColumns = ['N', 'R', 'W', 'X', 'Y', 'Z'];
+          const filteredHeaders = headers.filter(h => !ignoredColumns.includes(h));
+          
+          setColumns(filteredHeaders);
           setExcelData(jsonData);
           setSelectedValues({});
           setCheckedColumns({});
@@ -455,7 +459,6 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
       {/* Primary Key Dropdowns */}
       {primaryKeyFields.length > 0 && (
         <div className="space-y-4 mb-6">
-          <h3 className="text-sm font-semibold text-muted-foreground">Select Primary Keys</h3>
           {primaryKeyFields.map((column) => {
             const columnIndex = columns.indexOf(column);
             const options = getFilteredOptions(columnIndex);
