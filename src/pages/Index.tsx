@@ -546,6 +546,19 @@ const Index = () => {
                   </SelectContent>
                 </Select>
               )}
+              <Button variant="outline" onClick={loadModels} disabled={isLoadingModels}>
+                {isLoadingModels ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-4 h-4 mr-2" />
+                    Load Models
+                  </>
+                )}
+              </Button>
             </div>
           </div>
 

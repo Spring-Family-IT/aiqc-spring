@@ -356,47 +356,6 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
         </label>
       </div>
 
-      {/* Debug Export Buttons */}
-      {columns.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => downloadJson(excelData, 'raw-excel-rows.json')}
-          >
-            Download raw JSON
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              const lastSelectedIndex = columns.reduce((acc, col, idx) =>
-                selectedValues[col] ? idx : acc, -1);
-              const filtered = lastSelectedIndex >= 0
-                ? filterDataUpToIndex(lastSelectedIndex + 1)
-                : excelData;
-              downloadJson(filtered, 'filtered-rows.json');
-            }}
-          >
-            Download filtered JSON
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => downloadJson(buildGroupedSummary(), 'grouped-comm-version.json')}
-          >
-            Download grouped JSON
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => downloadJson(buildDebugSnapshot(), 'debug-cascade.json')}
-          >
-            Download debug JSON
-          </Button>
-        </div>
-      )}
-
       {/* Check All Checkbox */}
       {columns.length > 0 && (
         <div className="mb-4 p-4 bg-accent/10 rounded-lg border border-accent/20">
