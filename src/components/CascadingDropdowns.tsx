@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload } from "lucide-react";
+
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
@@ -12,114 +12,153 @@ interface ExcelData {
 }
 
 interface CascadingDropdownsProps {
+  excelFile?: File | null;
   onSelectedInputsChange?: (inputs: { column: string; value: string }[]) => void;
 }
 
-export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdownsProps) => {
+export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: CascadingDropdownsProps) => {
   const [excelData, setExcelData] = useState<ExcelData[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [selectedValues, setSelectedValues] = useState<{ [key: string]: string }>({});
   const [checkedColumns, setCheckedColumns] = useState<{ [key: string]: boolean }>({});
   const [checkAll, setCheckAll] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [isPrimaryKeysComplete, setIsPrimaryKeysComplete] = useState(false);
   const { toast } = useToast();
+  
+  const PRIMARY_KEYS = ['Communication no.', 'Name of Dependency', 'Type'];
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFile = event.target.files?.[0];
-    if (!uploadedFile) return;
+  // Process Excel file when it changes
+  useEffect(() => {
+    if (!excelFile) return;
 
-    setFile(uploadedFile);
-
-    try {
-      const arrayBuffer = await uploadedFile.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      
-      // Read all rows as array
-      const allRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-
-      if (allRows.length > 4) {
-        // Use 4th row (index 3) as headers
-        const headers = allRows[3].map((h: any) => String(h || ''));
+    const processFile = async () => {
+      try {
+        const arrayBuffer = await excelFile.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
         
-        // Get data starting from row 5 (index 4)
-        const dataRows = allRows.slice(4);
-        
-        // Convert to object format
-        const jsonData = dataRows.map(row => {
-          const obj: ExcelData = {};
-          headers.forEach((header, index) => {
-            obj[header] = row[index] !== undefined ? row[index] : null;
-          });
-          return obj;
-        });
+        // Read all rows as array including empty cells
+        const allRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null }) as any[][];
 
-        // Forward-fill empty cells with previous non-null values
-        headers.forEach((header) => {
-          let lastValue: string | number | null = null;
-          jsonData.forEach((row) => {
-            if (row[header] !== null && row[header] !== undefined && String(row[header]).trim() !== '') {
-              lastValue = row[header];
-            } else if (lastValue !== null) {
-              row[header] = lastValue;
+        if (allRows.length > 4) {
+          // Get the raw range to determine actual column count
+          const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+          const columnCount = range.e.c + 1; // +1 because it's 0-indexed
+
+          // Use row 4 (index 3) as headers
+          const row4 = allRows[3] || [];
+
+          const headers = [];
+          for (let i = 0; i < columnCount; i++) {
+            let header = row4[i];
+            
+            // If row 4 header is null/empty, use column letter
+            if (!header || String(header).trim() === '') {
+              // Generate column name like Excel does (A, B, C, ..., Z, AA, AB, etc.)
+              const colName = XLSX.utils.encode_col(i);
+              
+              // Special case: column O (index 14) should be named "Type"
+              if (i === 14) {
+                header = 'Type';
+              } else {
+                header = colName;
+              }
             }
+            
+            headers.push(String(header));
+          }
+          
+          // Get data starting from row 5 (index 4)
+          const dataRows = allRows.slice(4);
+          
+          // Convert to object format
+          const jsonData = dataRows.map(row => {
+            const obj: ExcelData = {};
+            headers.forEach((header, index) => {
+              obj[header] = row[index] !== undefined ? row[index] : null;
+            });
+            return obj;
           });
-        });
 
-        setColumns(headers);
-        setExcelData(jsonData);
-        setSelectedValues({});
-        setCheckedColumns({});
+          // Forward-fill empty cells with previous non-null values
+          headers.forEach((header) => {
+            let lastValue: string | number | null = null;
+            jsonData.forEach((row) => {
+              if (row[header] !== null && row[header] !== undefined && String(row[header]).trim() !== '') {
+                lastValue = row[header];
+              } else if (lastValue !== null) {
+                row[header] = lastValue;
+              }
+            });
+          });
 
+          setColumns(headers);
+          setExcelData(jsonData);
+          setSelectedValues({});
+          setCheckedColumns({});
+          setIsPrimaryKeysComplete(false);
+
+          toast({
+            title: "Excel file loaded",
+            description: `Loaded ${jsonData.length} rows with ${headers.length} columns`,
+          });
+        } else {
+          toast({
+            title: "Invalid file format",
+            description: "Excel file must have at least 4 rows with headers in row 4",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Error reading Excel file:', error);
         toast({
-          title: "Excel file loaded",
-          description: `Loaded ${jsonData.length} rows with ${headers.length} columns`,
-        });
-      } else {
-        toast({
-          title: "Invalid file format",
-          description: "Excel file must have at least 4 rows with headers in row 4",
+          title: "Error loading file",
+          description: error instanceof Error ? error.message : "Failed to parse Excel file",
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error('Error reading Excel file:', error);
-      toast({
-        title: "Error loading file",
-        description: error instanceof Error ? error.message : "Failed to parse Excel file",
-        variant: "destructive",
-      });
-    }
-  };
+    };
+
+    processFile();
+  }, [excelFile, toast]);
 
   const getFilteredOptions = (columnIndex: number): string[] => {
-    if (columnIndex === 0) {
-      // First dropdown: return all unique values with proper trimming
-      const uniqueValues = [...new Set(excelData.map(row => 
-        String(row[columns[0]] || '').trim()
-      ))];
-      return uniqueValues.filter(v => v !== '').sort();
-    }
-
-    // For subsequent dropdowns, filter based on previous selections
-    let filteredData = [...excelData];
+    const column = columns[columnIndex];
+    const primaryKeyIndex = PRIMARY_KEYS.indexOf(column);
     
-    for (let i = 0; i < columnIndex; i++) {
-      const selectedValue = selectedValues[columns[i]];
-      if (selectedValue) {
-        filteredData = filteredData.filter(row => {
-          const rowValue = String(row[columns[i]] || '').trim();
-          const selectedValueTrimmed = selectedValue.trim();
-          return rowValue && selectedValueTrimmed && rowValue === selectedValueTrimmed;
-        });
+    // If this is a primary key
+    if (primaryKeyIndex !== -1) {
+      if (primaryKeyIndex === 0) {
+        // First primary key: show all unique values
+        const uniqueValues = [...new Set(excelData.map(row => 
+          String(row[column] || '').trim()
+        ))];
+        return uniqueValues.filter(v => v !== '').sort();
+      } else {
+        // Subsequent primary keys: filter based on previous primary keys
+        let filteredData = [...excelData];
+        
+        for (let i = 0; i < primaryKeyIndex; i++) {
+          const prevKey = PRIMARY_KEYS[i];
+          const selectedValue = selectedValues[prevKey];
+          if (selectedValue) {
+            filteredData = filteredData.filter(row => {
+              const rowValue = String(row[prevKey] || '').trim();
+              return rowValue === selectedValue.trim();
+            });
+          }
+        }
+        
+        const uniqueValues = [...new Set(filteredData.map(row => 
+          String(row[column] || '').trim()
+        ))];
+        return uniqueValues.filter(v => v !== '').sort();
       }
     }
-
-    const uniqueValues = [...new Set(filteredData.map(row => 
-      String(row[columns[columnIndex]] || '').trim()
-    ))];
-    return uniqueValues.filter(v => v !== '').sort();
+    
+    // Non-primary key fields: return empty array (they will be auto-populated)
+    return [];
   };
 
   const getDebugInfo = (columnIndex: number): number => {
@@ -139,19 +178,72 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
     return filteredData.length;
   };
 
-  const handleSelectionChange = (column: string, value: string, columnIndex: number) => {
-    const newSelectedValues: { [key: string]: string } = {};
+  const autoPopulateFields = (primaryKeySelections: { [key: string]: string }) => {
+    // Find the row that matches all primary key selections
+    const matchingRow = excelData.find(row => {
+      return PRIMARY_KEYS.every(key => {
+        const rowValue = String(row[key] || '').trim();
+        const selectedValue = String(primaryKeySelections[key] || '').trim();
+        return rowValue === selectedValue;
+      });
+    });
     
-    // Keep selections up to current column
-    for (let i = 0; i <= columnIndex; i++) {
-      if (i === columnIndex) {
-        newSelectedValues[column] = value;
-      } else if (selectedValues[columns[i]]) {
-        newSelectedValues[columns[i]] = selectedValues[columns[i]];
-      }
+    if (matchingRow) {
+      // Auto-populate all fields from the matching row
+      const autoPopulated: { [key: string]: string } = { ...primaryKeySelections };
+      columns.forEach(col => {
+        if (!PRIMARY_KEYS.includes(col)) {
+          const value = matchingRow[col];
+          if (value !== null && value !== undefined) {
+            autoPopulated[col] = String(value);
+          }
+        }
+      });
+      
+      setSelectedValues(autoPopulated);
+      
+      toast({
+        title: "Fields auto-populated",
+        description: "All fields have been filled based on your selections",
+      });
+    }
+  };
+
+  const handleSelectionChange = (column: string, value: string, columnIndex: number) => {
+    const newSelectedValues: { [key: string]: string } = { ...selectedValues };
+    newSelectedValues[column] = value;
+    
+    // Check if this is a primary key
+    const isPrimaryKey = PRIMARY_KEYS.includes(column);
+    
+    if (isPrimaryKey) {
+      // Clear all selections after this primary key in the PRIMARY_KEYS array
+      const primaryKeyIndex = PRIMARY_KEYS.indexOf(column);
+      PRIMARY_KEYS.slice(primaryKeyIndex + 1).forEach(key => {
+        delete newSelectedValues[key];
+      });
+      
+      // Clear all non-primary-key fields
+      columns.forEach(col => {
+        if (!PRIMARY_KEYS.includes(col)) {
+          delete newSelectedValues[col];
+        }
+      });
     }
     
     setSelectedValues(newSelectedValues);
+    
+    // Check if all primary keys are selected
+    const allPrimaryKeysSelected = PRIMARY_KEYS.every(key => 
+      newSelectedValues[key] && newSelectedValues[key].trim() !== ''
+    );
+    
+    setIsPrimaryKeysComplete(allPrimaryKeysSelected);
+    
+    // If all primary keys are selected, auto-populate other fields
+    if (allPrimaryKeysSelected) {
+      autoPopulateFields(newSelectedValues);
+    }
   };
 
   const getSelectedRow = (): ExcelData | null => {
@@ -321,7 +413,7 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
     });
 
     return {
-      fileName: file?.name || null,
+      fileName: excelFile?.name || null,
       totalRows: excelData.length,
       headers: columns,
       selections: selectedValues,
@@ -333,28 +425,12 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
   const selectedRow = getSelectedRow();
   const selectedInputs = getSelectedInputs();
 
+  const primaryKeyFields = columns.filter(col => PRIMARY_KEYS.includes(col));
+  const otherFields = columns.filter(col => !PRIMARY_KEYS.includes(col));
+
   return (
     <Card className="p-6">
       <h2 className="text-2xl font-semibold mb-4">Cascading Dropdowns</h2>
-      
-      {/* File Upload */}
-      <div className="mb-6">
-        <input
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={handleFileUpload}
-          className="hidden"
-          id="excel-upload"
-        />
-        <label htmlFor="excel-upload">
-          <Button variant="outline" className="cursor-pointer" asChild>
-            <span>
-              <Upload className="w-4 h-4 mr-2" />
-              {file ? file.name : "Upload Excel File"}
-            </span>
-          </Button>
-        </label>
-      </div>
 
       {/* Check All Checkbox */}
       {columns.length > 0 && (
@@ -376,39 +452,25 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
         </div>
       )}
 
-      {/* Cascading Dropdowns */}
-      {columns.length > 0 && (
-        <div className="space-y-4">
-          {columns.map((column, index) => {
-            const options = getFilteredOptions(index);
-            
-            // Fix disabled logic: fields after index 11 (Material group) only require first 4 core columns
-            const isDisabled = (() => {
-              if (index === 0) return false; // First dropdown always enabled
-              
-              // For the first cascading columns (up to "Marketing exit date")
-              if (index <= 11) {
-                return !selectedValues[columns[index - 1]];
-              }
-              
-              // For component-level fields (Material group onwards)
-              // Only require the first 4 core columns to be selected
-              const coreColumns = columns.slice(0, 4);
-              return !coreColumns.every(col => selectedValues[col]);
-            })();
+      {/* Primary Key Dropdowns */}
+      {primaryKeyFields.length > 0 && (
+        <div className="space-y-4 mb-6">
+          <h3 className="text-sm font-semibold text-muted-foreground">Select Primary Keys</h3>
+          {primaryKeyFields.map((column) => {
+            const columnIndex = columns.indexOf(column);
+            const options = getFilteredOptions(columnIndex);
+            const primaryKeyIndex = PRIMARY_KEYS.indexOf(column);
+            const isDisabled = primaryKeyIndex > 0 && !selectedValues[PRIMARY_KEYS[primaryKeyIndex - 1]];
             
             return (
               <div key={column} className="space-y-2">
-                <label className="text-sm font-medium">
-                  {column}
-                  <span className="text-xs text-muted-foreground ml-2">
-                    ({getDebugInfo(index)} rows available)
-                  </span>
-                </label>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium min-w-[200px]">
+                    {column}
+                  </label>
                   <Select
-                    value={selectedValues[column] || ""}
-                    onValueChange={(value) => handleSelectionChange(column, value, index)}
+                    value={selectedValues[column] || ''}
+                    onValueChange={(value) => handleSelectionChange(column, value, columnIndex)}
                     disabled={isDisabled}
                   >
                     <SelectTrigger className="flex-1">
@@ -422,20 +484,41 @@ export const CascadingDropdowns = ({ onSelectedInputsChange }: CascadingDropdown
                       ))}
                     </SelectContent>
                   </Select>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id={`checkbox-${column}`}
-                      checked={checkedColumns[column] || false}
-                      onCheckedChange={(checked) => handleCheckboxChange(column, checked as boolean)}
-                      disabled={!selectedValues[column]}
-                    />
-                    <label
-                      htmlFor={`checkbox-${column}`}
-                      className="text-sm text-muted-foreground cursor-pointer"
-                    >
-                      Use as input
-                    </label>
+                  <Checkbox
+                    id={`checkbox-${column}`}
+                    checked={checkedColumns[column] || false}
+                    onCheckedChange={(checked) => handleCheckboxChange(column, checked as boolean)}
+                    disabled={!selectedValues[column]}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Auto-populated Fields */}
+      {isPrimaryKeysComplete && otherFields.length > 0 && (
+        <div className="space-y-4 mb-6">
+          <h3 className="text-sm font-semibold text-muted-foreground">Auto-populated Fields</h3>
+          {otherFields.map((column) => {
+            const value = selectedValues[column] || '';
+            
+            return (
+              <div key={column} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium min-w-[200px]">
+                    {column}
+                  </label>
+                  <div className="flex-1 px-3 py-2 bg-muted/50 rounded-md text-sm">
+                    {value || '—'}
                   </div>
+                  <Checkbox
+                    id={`checkbox-${column}`}
+                    checked={checkedColumns[column] || false}
+                    onCheckedChange={(checked) => handleCheckboxChange(column, checked as boolean)}
+                    disabled={!value}
+                  />
                 </div>
               </div>
             );

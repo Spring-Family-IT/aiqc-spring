@@ -572,7 +572,10 @@ const Index = () => {
 
           {/* Cascading Dropdowns Section */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <CascadingDropdowns onSelectedInputsChange={handleSelectedInputsChange} />
+            <CascadingDropdowns 
+              excelFile={excelFile}
+              onSelectedInputsChange={handleSelectedInputsChange} 
+            />
           </div>
 
           {/* Action Buttons */}
