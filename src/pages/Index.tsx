@@ -546,35 +546,7 @@ const Index = () => {
                   </SelectContent>
                 </Select>
               )}
-              <Button variant="outline" onClick={loadModels} disabled={isLoadingModels}>
-                {isLoadingModels ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    <Brain className="w-4 h-4 mr-2" />
-                    Load Models
-                  </>
-                )}
-              </Button>
             </div>
-
-            {/* Selected Model Display */}
-            {selectedModelId && (
-              <div className="mt-4 flex items-center justify-center">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
-                  <Brain className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium">
-                    Current Model:
-                  </span>
-                  <code className="text-sm font-mono bg-background px-2 py-1 rounded">
-                    {customModels.find(m => m.modelId === selectedModelId)?.description || selectedModelId}
-                  </code>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* File Upload Section */}
@@ -591,7 +563,7 @@ const Index = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-center gap-4 flex-wrap">
+          <div className="flex justify-center gap-4 flex-wrap items-center">
             <Button
               onClick={analyzePdf}
               disabled={!pdfFile || !selectedModelId || isAnalyzing}
@@ -611,6 +583,19 @@ const Index = () => {
               )}
             </Button>
 
+            {/* Selected Model Display - Next to Analyze Button */}
+            {selectedModelId && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
+                <Brain className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">
+                  Model:
+                </span>
+                <code className="text-sm font-mono bg-background px-2 py-1 rounded">
+                  {customModels.find(m => m.modelId === selectedModelId)?.description || selectedModelId}
+                </code>
+              </div>
+            )}
+
             <Button
               onClick={comparePdfWithSelectedInputs}
               disabled={!pdfFile || !selectedModelId || selectedInputs.length === 0 || isComparing}
@@ -627,26 +612,6 @@ const Index = () => {
                 <>
                   <GitCompare className="w-5 h-5 mr-2" />
                   Check
-                </>
-              )}
-            </Button>
-
-            <Button
-              onClick={uploadExcelToDatabase}
-              disabled={!excelFile || isUploading}
-              size="lg"
-              className="px-8"
-              variant="secondary"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-5 h-5 mr-2" />
-                  Upload to Database
                 </>
               )}
             </Button>
