@@ -434,7 +434,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
 
   return (
     <Card className="p-6">
-      <h2 className="text-2xl font-semibold mb-4">Cascading Dropdowns</h2>
+      <h2 className="text-2xl font-semibold mb-4">SAP Fields</h2>
 
       {/* Check All Checkbox */}
       {columns.length > 0 && (
@@ -503,7 +503,6 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
       {/* Auto-populated Fields */}
       {isPrimaryKeysComplete && otherFields.length > 0 && (
         <div className="space-y-4 mb-6">
-          <h3 className="text-sm font-semibold text-muted-foreground">Auto-populated Fields</h3>
           {otherFields.map((column) => {
             const value = selectedValues[column] || '';
             
@@ -544,20 +543,6 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
         </div>
       )}
 
-      {/* Selected Row Display */}
-      {selectedRow && (
-        <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-          <h3 className="font-semibold mb-2">Selected Row Details:</h3>
-          <div className="space-y-1 text-sm">
-            {Object.entries(selectedRow).map(([key, value]) => (
-              <div key={key} className="flex justify-between">
-                <span className="font-medium">{key}:</span>
-                <span className="text-muted-foreground">{String(value)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </Card>
   );
 };
