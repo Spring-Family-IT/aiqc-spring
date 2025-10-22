@@ -501,7 +501,6 @@ const Index = () => {
           <div className="text-center space-y-4">
             <div className="flex justify-end items-center gap-4 mb-4">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md">
-                <span className="text-sm text-muted-foreground">Welcome,</span>
                 <span className="text-sm font-medium">{session.user.email}</span>
               </div>
               <Button variant="outline" onClick={handleSignOut}>
@@ -531,60 +530,102 @@ const Index = () => {
             </div>
           )}
 
-          {/* PDF File Upload Section */}
+          {/* Model Selection Dropdown */}
+          {customModels.length > 0 && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Card className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-semibold">Select Analysis Model</h3>
+                  </div>
+                  <Select value={selectedModelId} onValueChange={setSelectedModelId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customModels.map((model) => (
+                        <SelectItem key={model.modelId} value={model.modelId}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{model.description || model.modelId}</span>
+                            <span className="text-xs text-muted-foreground">{model.modelId}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedModelId && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-md">
+                      <span className="text-sm text-muted-foreground">Selected:</span>
+                      <code className="text-sm font-mono">
+                        {customModels.find(m => m.modelId === selectedModelId)?.description || selectedModelId}
+                      </code>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* File Upload Section - PDF and Excel in Same Row */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="p-6">
-              <FileUpload
-                onFileSelect={handleFileSelect}
-                pdfFile={pdfFile}
-                onValidationError={(message) => toast({
-                  title: "Validation Error",
-                  description: message,
-                  variant: "destructive"
-                })}
-              />
-              
-              {/* Analyze Document Button - Moved here */}
-              <div className="flex justify-center mt-6 gap-4 items-center">
-                <Button
-                  onClick={analyzePdf}
-                  disabled={!pdfFile || !selectedModelId || isAnalyzing}
-                  size="lg"
-                  className="px-8"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="w-5 h-5 mr-2" />
-                      Analyze Document
-                    </>
-                  )}
-                </Button>
-                
-                {/* Selected Model Display */}
-                {selectedModelId && (
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
-                    <Brain className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium">Model:</span>
-                    <code className="text-sm font-mono bg-background px-2 py-1 rounded">
-                      {customModels.find(m => m.modelId === selectedModelId)?.description || selectedModelId}
-                    </code>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left Column: PDF Upload + Analyze Button */}
+                <div className="space-y-6">
+                  <FileUpload
+                    onFileSelect={handleFileSelect}
+                    pdfFile={pdfFile}
+                    onValidationError={(message) => toast({
+                      title: "Validation Error",
+                      description: message,
+                      variant: "destructive"
+                    })}
+                  />
+                  
+                  {/* Analyze Document Button - Vertically aligned with PDF */}
+                  <div className="flex flex-col gap-4">
+                    <Button
+                      onClick={analyzePdf}
+                      disabled={!pdfFile || !selectedModelId || isAnalyzing}
+                      size="lg"
+                      className="w-full"
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="w-5 h-5 mr-2" />
+                          Analyze Document
+                        </>
+                      )}
+                    </Button>
+                    
+                    {/* Selected Model Display */}
+                    {selectedModelId && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg border border-primary/20">
+                        <Brain className="w-4 h-4 text-primary" />
+                        <span className="text-xs font-medium">Model:</span>
+                        <code className="text-xs font-mono bg-background px-2 py-1 rounded truncate">
+                          {customModels.find(m => m.modelId === selectedModelId)?.description || selectedModelId}
+                        </code>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+                
+                {/* Right Column: Excel Upload */}
+                <div>
+                  <FileUpload
+                    onExcelSelect={handleExcelFileSelect}
+                    excelFile={excelFile}
+                  />
+                </div>
               </div>
             </Card>
-          </div>
-
-          {/* Excel File Upload Section */}
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <FileUpload
-              onExcelSelect={handleExcelFileSelect}
-              excelFile={excelFile}
-            />
           </div>
 
           {/* Cascading Dropdowns Section */}

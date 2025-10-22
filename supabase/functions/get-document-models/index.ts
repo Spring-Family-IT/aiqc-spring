@@ -27,7 +27,7 @@ serve(async (req) => {
     console.log('Fetching document models from Azure using DocumentIntelligenceAdministrationClient...', projectId ? `for project: ${projectId}` : fetchProjects ? 'fetching all projects' : '');
 
     // Use the Administration API endpoint with proper version
-    const adminApiVersion = '2024-07-31-preview';
+    const adminApiVersion = '2024-02-29-preview';
     const modelsUrl = `${azureEndpoint}/documentintelligence/documentModels?api-version=${adminApiVersion}`;
     
     const response = await fetch(modelsUrl, {

@@ -43,7 +43,7 @@ export const FileUpload = ({ onFileSelect, onExcelSelect, pdfFile, excelFile, on
   };
 
   return (
-    <div className="flex justify-center gap-4">
+    <div className="w-full">
       {/* PDF Upload - Only show if onFileSelect is provided */}
       {onFileSelect && (
         <Card
