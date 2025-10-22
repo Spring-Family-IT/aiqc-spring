@@ -109,7 +109,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
           });
         } else {
           toast({
-            title: "Invalid file format",
+            title: "Upload a wrong Excel file structure / different from SAP​",
             description: "Excel file must have at least 4 rows with headers in row 4",
             variant: "destructive",
           });

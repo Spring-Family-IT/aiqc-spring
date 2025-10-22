@@ -203,10 +203,10 @@ serve(async (req) => {
         // No mapping defined - this is a "not found" case
         comparisonResults.push({
           field: excelColumnName,
-          pdfValue: 'Not found',
+          pdfValue: '',
           excelValue: String(excelValue),
           status: 'not-found',
-          matchDetails: 'No mapping configured for this field'
+          matchDetails: ''
         });
         continue;
       }
