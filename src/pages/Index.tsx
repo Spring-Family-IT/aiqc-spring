@@ -539,29 +539,21 @@ const Index = () => {
                     <Brain className="w-5 h-5 text-primary" />
                     <h3 className="text-lg font-semibold">Select Analysis Model</h3>
                   </div>
-                  <Select value={selectedModelId} onValueChange={setSelectedModelId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customModels.map((model) => (
-                        <SelectItem key={model.modelId} value={model.modelId}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{model.description || model.modelId}</span>
-                            <span className="text-xs text-muted-foreground">{model.modelId}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedModelId && (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-md">
-                      <span className="text-sm text-muted-foreground">Selected:</span>
-                      <code className="text-sm font-mono">
-                        {customModels.find(m => m.modelId === selectedModelId)?.description || selectedModelId}
-                      </code>
-                    </div>
-                  )}
+        <Select value={selectedModelId} onValueChange={setSelectedModelId}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a model" />
+          </SelectTrigger>
+          <SelectContent>
+            {customModels.map((model) => (
+              <SelectItem key={model.modelId} value={model.modelId}>
+                <div className="flex flex-col">
+                  <span className="font-medium">{model.description || model.modelId}</span>
+                  <span className="text-xs text-muted-foreground">{model.modelId}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
                 </div>
               </Card>
             </div>
@@ -585,35 +577,24 @@ const Index = () => {
                   
                   {/* Analyze Document Button - Vertically aligned with PDF */}
                   <div className="flex flex-col gap-4">
-                    <Button
-                      onClick={analyzePdf}
-                      disabled={!pdfFile || !selectedModelId || isAnalyzing}
-                      size="lg"
-                      className="w-full"
-                    >
-                      {isAnalyzing ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Analyzing...
-                        </>
-                      ) : (
-                        <>
-                          <FileText className="w-5 h-5 mr-2" />
-                          Analyze Document
-                        </>
-                      )}
-                    </Button>
-                    
-                    {/* Selected Model Display */}
-                    {selectedModelId && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg border border-primary/20">
-                        <Brain className="w-4 h-4 text-primary" />
-                        <span className="text-xs font-medium">Model:</span>
-                        <code className="text-xs font-mono bg-background px-2 py-1 rounded truncate">
-                          {customModels.find(m => m.modelId === selectedModelId)?.description || selectedModelId}
-                        </code>
-                      </div>
-                    )}
+          <Button
+            onClick={analyzePdf}
+            disabled={!pdfFile || !selectedModelId || isAnalyzing}
+            size="lg"
+            className="w-full"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <FileText className="w-5 h-5 mr-2" />
+                Analyze Document
+              </>
+            )}
+          </Button>
                   </div>
                 </div>
                 
