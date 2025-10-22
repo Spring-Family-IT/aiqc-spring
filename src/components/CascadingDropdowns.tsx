@@ -434,7 +434,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
 
   return (
     <Card className="p-6">
-      <h2 className="text-2xl font-semibold mb-4">SAP Fields</h2>
+      <h2 className="text-2xl font-semibold mb-4">Data extracted from SAP/Excel File.</h2>
 
       {/* Check All Checkbox */}
       {columns.length > 0 && (

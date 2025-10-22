@@ -8,6 +8,7 @@ import { ProjectsList } from "@/components/ProjectsList";
 import { CascadingDropdowns } from "@/components/CascadingDropdowns";
 import { ComparisonResults } from "@/components/ComparisonResults";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompare } from "lucide-react";
@@ -45,6 +46,9 @@ const Index = () => {
         setSession(session);
         if (!session) {
           navigate("/auth");
+        } else {
+          // Auto-load models when session is established
+          loadAllModels();
         }
       }
     );
@@ -54,6 +58,9 @@ const Index = () => {
       setSession(session);
       if (!session) {
         navigate("/auth");
+      } else {
+        // Auto-load models on initial load
+        loadAllModels();
       }
     });
 
@@ -274,7 +281,7 @@ const Index = () => {
       
       toast({
         title: "Checking Complete",
-        description: `${data.summary.correct} correct, ${data.summary.incorrect} incorrect, ${data.summary.notFound} not found`,
+        description: `${data.summary.correct} matched, ${data.summary.incorrect} mismatched, ${data.summary.notFound} not found`,
       });
     } catch (error) {
       console.error('Comparison error:', error);
@@ -416,14 +423,18 @@ const Index = () => {
         }
         setCustomCount(data.customCount || 0);
         
-        // Auto-select first model if available
-        if (data.customModels.length > 0 && !selectedModelId) {
-          setSelectedModelId(data.customModels[0].modelId);
+        // Auto-select "Model_PKG_v2_Combined" model by default
+        if (data.customModels.length > 0) {
+          const defaultModel = data.customModels.find(
+            (m: any) => m.modelId === "Model_PKG_v2_Combined" || 
+                       m.description === "Model_PKG_v2_Combined"
+          );
+          setSelectedModelId(defaultModel?.modelId || data.customModels[0].modelId);
         }
         
         toast({
-          title: "Custom models loaded",
-          description: `Found ${data.customCount || 0} custom extraction models`
+          title: "Models loaded automatically",
+          description: `Found ${data.customCount || 0} custom models. Default model selected.`
         });
       }
     } catch (error) {
@@ -488,7 +499,11 @@ const Index = () => {
         <div className="max-w-6xl mx-auto space-y-8">
           {/* Header */}
           <div className="text-center space-y-4">
-            <div className="flex justify-end items-center mb-4">
+            <div className="flex justify-end items-center gap-4 mb-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md">
+                <span className="text-sm text-muted-foreground">Welcome,</span>
+                <span className="text-sm font-medium">{session.user.email}</span>
+              </div>
               <Button variant="outline" onClick={handleSignOut}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out
@@ -498,10 +513,10 @@ const Index = () => {
               <FileCheck className="w-8 h-8 text-primary" />
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Document Intelligence Analysis
+              AI QC Tool for LEGO Packaging
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Upload your PDF document to extract and analyze data using Azure AI
+              This is a QC tool to perform number check and text check, powered by AI.
             </p>
           </div>
 
@@ -516,59 +531,61 @@ const Index = () => {
             </div>
           )}
 
-          {/* Model Selection */}
+          {/* PDF File Upload Section */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex gap-2 items-center justify-center">
-              {customModels.length > 0 ? (
-                <Select value={selectedModelId} onValueChange={setSelectedModelId}>
-                  <SelectTrigger className="w-[400px]">
-                    <SelectValue placeholder="Select a custom model" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background z-50 max-h-[300px]">
-                    {customModels.map((model) => (
-                      <SelectItem key={model.modelId} value={model.modelId}>
-                        {model.description || model.modelId}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                  <SelectTrigger className="w-[300px]">
-                    <SelectValue placeholder="Select a project" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background z-50">
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name} ({project.id})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              <Button variant="outline" onClick={loadModels} disabled={isLoadingModels}>
-                {isLoadingModels ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    <Brain className="w-4 h-4 mr-2" />
-                    Load Models
-                  </>
+            <Card className="p-6">
+              <FileUpload
+                onFileSelect={handleFileSelect}
+                pdfFile={pdfFile}
+                onValidationError={(message) => toast({
+                  title: "Validation Error",
+                  description: message,
+                  variant: "destructive"
+                })}
+              />
+              
+              {/* Analyze Document Button - Moved here */}
+              <div className="flex justify-center mt-6 gap-4 items-center">
+                <Button
+                  onClick={analyzePdf}
+                  disabled={!pdfFile || !selectedModelId || isAnalyzing}
+                  size="lg"
+                  className="px-8"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-5 h-5 mr-2" />
+                      Analyze Document
+                    </>
+                  )}
+                </Button>
+                
+                {/* Selected Model Display */}
+                {selectedModelId && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
+                    <Brain className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium">Model:</span>
+                    <code className="text-sm font-mono bg-background px-2 py-1 rounded">
+                      {customModels.find(m => m.modelId === selectedModelId)?.description || selectedModelId}
+                    </code>
+                  </div>
                 )}
-              </Button>
-            </div>
+              </div>
+            </Card>
           </div>
 
-          {/* File Upload Section */}
-          <FileUpload
-            onFileSelect={handleFileSelect}
-            onExcelSelect={handleExcelFileSelect}
-            pdfFile={pdfFile}
-            excelFile={excelFile}
-          />
+          {/* Excel File Upload Section */}
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <FileUpload
+              onExcelSelect={handleExcelFileSelect}
+              excelFile={excelFile}
+            />
+          </div>
 
           {/* Cascading Dropdowns Section */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -578,40 +595,8 @@ const Index = () => {
             />
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-center gap-4 flex-wrap items-center">
-            <Button
-              onClick={analyzePdf}
-              disabled={!pdfFile || !selectedModelId || isAnalyzing}
-              size="lg"
-              className="px-8"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <FileText className="w-5 h-5 mr-2" />
-                  Analyze Document
-                </>
-              )}
-            </Button>
-
-            {/* Selected Model Display - Next to Analyze Button */}
-            {selectedModelId && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
-                <Brain className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">
-                  Model:
-                </span>
-                <code className="text-sm font-mono bg-background px-2 py-1 rounded">
-                  {customModels.find(m => m.modelId === selectedModelId)?.description || selectedModelId}
-                </code>
-              </div>
-            )}
-
+          {/* Check Button */}
+          <div className="flex justify-center">
             <Button
               onClick={comparePdfWithSelectedInputs}
               disabled={!pdfFile || !selectedModelId || selectedInputs.length === 0 || isComparing}

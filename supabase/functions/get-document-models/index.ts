@@ -16,7 +16,7 @@ serve(async (req) => {
     
     const azureKey = Deno.env.get('AZURE_DOCUMENT_INTELLIGENCE_KEY');
     const azureEndpoint = Deno.env.get('AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT');
-    const apiVersion = '2023-07-31';
+    const apiVersion = '2024-02-29';
 
     if (!azureKey || !azureEndpoint) {
       return new Response(

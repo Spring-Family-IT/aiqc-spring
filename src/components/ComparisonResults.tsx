@@ -45,7 +45,7 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
               <CheckCircle2 className="w-6 h-6 text-success" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Correct</p>
+              <p className="text-sm text-muted-foreground">Matched</p>
               <p className="text-2xl font-bold text-success">{correctCount}</p>
             </div>
           </div>
@@ -57,7 +57,7 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
               <XCircle className="w-6 h-6 text-destructive" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Incorrect</p>
+              <p className="text-sm text-muted-foreground">Mismatched</p>
               <p className="text-2xl font-bold text-destructive">{incorrectCount}</p>
             </div>
           </div>
@@ -109,12 +109,12 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
                   result.status === 'correct' ? (
                     <Badge variant="default" className="bg-success text-success-foreground">
                       <CheckCircle2 className="w-3 h-3 mr-1" />
-                      CORRECT
+                      MATCHED
                     </Badge>
                   ) : result.status === 'incorrect' ? (
                     <Badge variant="destructive">
                       <XCircle className="w-3 h-3 mr-1" />
-                      INCORRECT
+                      MISMATCHED
                     </Badge>
                   ) : (
                     <Badge variant="secondary" className="bg-warning text-warning-foreground">
