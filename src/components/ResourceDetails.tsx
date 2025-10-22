@@ -54,7 +54,7 @@ export const ResourceDetails = ({
         <div className="border-t pt-4">
           <div className="grid gap-6 md:grid-cols-2">
             {/* Left: Model Count Display */}
-            <div className="flex justify-center md:justify-start">
+            <div className="flex justify-center md:justify-end">
               <div className="text-center p-4 bg-muted rounded-lg min-w-[200px]">
                 <div className="text-3xl font-bold text-primary">{customModels}</div>
                 <div className="text-sm text-muted-foreground mt-1">Custom Models Available</div>
@@ -62,7 +62,7 @@ export const ResourceDetails = ({
             </div>
 
             {/* Right: Model Selection Dropdown */}
-            <div className="space-y-2">
+            <div className="space-y-2 flex flex-col items-start justify-start">
               {children}
             </div>
           </div>
