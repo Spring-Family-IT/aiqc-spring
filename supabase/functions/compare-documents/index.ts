@@ -23,7 +23,7 @@ const MODEL_PKG_V2_COMBINED_MAPPING: Record<string, string | string[]> = {
   "Product Age Classification": "Age_Mark",
   "Product Version no.": "Version",
   "Piece count of FG": "Piece_Count",
-  "Component": ["Material_Number_MA", "Material_Number_Bottom", "Material_SA_Flap"],
+  "Component": ["Material_Number_MA", "Material_Number_Bottom", "Material_Number_SA_Flap"],
   "Finished Goods Material Number": "Item_Number",
   "EAN/UPC": "Barcode"
 };
