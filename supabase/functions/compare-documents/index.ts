@@ -17,8 +17,26 @@ const LP5_MAPPING: Record<string, string | string[]> = {
   "EAN/UPC": "BarcodeString"
 };
 
+// Model_PKG_v2_Combined Field Mapping
+const MODEL_PKG_V2_COMBINED_MAPPING: Record<string, string | string[]> = {
+  "Communication no.": ["SKU_Number_Front", "SKU_Number_Left", "SKU_Number_Right", "SKU_Number_Top", "SKU_Number_Bottom", "SKU_Number_Back"],
+  "Product Age Classification": "Age_Mark",
+  "Product Version no.": "Version",
+  "Piece count of FG": "Piece_Count",
+  "Component": ["Material_Number_MA", "Material_Number_Bottom", "Material_SA_Flap"],
+  "Finished Goods Material Number": "Item_Number",
+  "EAN/UPC": "Barcode"
+};
+
+// Mapping registry to select correct mapping based on modelId
+const MAPPING_REGISTRY: Record<string, Record<string, string | string[]>> = {
+  "LP5": LP5_MAPPING,
+  "Model_PKG_v2_Combined": MODEL_PKG_V2_COMBINED_MAPPING
+};
+
 const SPECIAL_RULES: Record<string, { removeSpaces?: boolean; toLowerCase?: boolean }> = {
-  "BarcodeString": { removeSpaces: true }
+  "BarcodeString": { removeSpaces: true },  // For LP5
+  "Barcode": { removeSpaces: true }         // For Model_PKG_v2_Combined
 };
 
 serve(async (req) => {
@@ -176,8 +194,10 @@ serve(async (req) => {
     const comparisonResults = [];
     
     for (const { column: excelColumnName, value: excelValue } of selectedInputs) {
+      // Select the correct mapping based on the model ID
+      const currentMapping = MAPPING_REGISTRY[modelId] || LP5_MAPPING;
       // Get the mapped PDF field(s) for this Excel column
-      const mappedPdfFields = LP5_MAPPING[excelColumnName];
+      const mappedPdfFields = currentMapping[excelColumnName];
       
       if (!mappedPdfFields) {
         // No mapping defined - this is a "not found" case
