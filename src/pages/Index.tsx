@@ -532,38 +532,34 @@ const Index = () => {
                 endpoint={azureEndpoint}
                 apiVersion={apiVersion}
                 customModels={customCount}
-              />
+              >
+                {/* Model Selection Dropdown */}
+                {customModels.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Select Analysis Model
+                    </label>
+                    <Select value={selectedModelId} onValueChange={setSelectedModelId}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customModels.map((model) => (
+                          <SelectItem key={model.modelId} value={model.modelId}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{model.description || model.modelId}</span>
+                              <span className="text-xs text-muted-foreground">{model.modelId}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </ResourceDetails>
             </div>
           )}
 
-          {/* Model Selection Dropdown */}
-          {customModels.length > 0 && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <Card className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Select Analysis Model</h3>
-                  </div>
-        <Select value={selectedModelId} onValueChange={setSelectedModelId}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select a model" />
-          </SelectTrigger>
-          <SelectContent>
-            {customModels.map((model) => (
-              <SelectItem key={model.modelId} value={model.modelId}>
-                <div className="flex flex-col">
-                  <span className="font-medium">{model.description || model.modelId}</span>
-                  <span className="text-xs text-muted-foreground">{model.modelId}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-                </div>
-              </Card>
-            </div>
-          )}
 
           {/* File Upload Section - PDF and Excel in Same Row */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
