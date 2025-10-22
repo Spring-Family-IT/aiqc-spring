@@ -67,6 +67,12 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Clear comparison and analysis results when model changes
+  useEffect(() => {
+    setComparisonResults(null);
+    setAnalysisResults(null);
+  }, [selectedModelId]);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
