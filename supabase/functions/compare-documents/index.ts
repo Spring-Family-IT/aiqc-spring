@@ -194,8 +194,8 @@ serve(async (req) => {
     const comparisonResults = [];
     
     for (const { column: excelColumnName, value: excelValue } of selectedInputs) {
-      // Select the correct mapping based on the model ID
-      const currentMapping = MAPPING_REGISTRY[modelId] || LP5_MAPPING;
+      // Select the correct mapping based on the model ID (defaults to Model_PKG_v2_Combined)
+      const currentMapping = MAPPING_REGISTRY[modelId] || MODEL_PKG_V2_COMBINED_MAPPING;
       // Get the mapped PDF field(s) for this Excel column
       const mappedPdfFields = currentMapping[excelColumnName];
       
