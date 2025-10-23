@@ -40,11 +40,12 @@ export const MODEL_PKG_V2_COMBINED_MAPPING: FieldMappingConfig = {
   mappings: {
     "Communication no.": ["SKU_Number_Front", "SKU_Number_Left", "SKU_Number_Right", "SKU_Number_Top", "SKU_Number_Bottom", "SKU_Number_Back"],
     "Product Age Classification": "Age_Mark",
-    "Product Version no.": "Version",
+    "Name of Dependency": "Version",
     "Piece count of FG": "Piece_Count",
     Component: ["Material_Number_MA", "Material_Number_Bottom", "Material_Number_SA_Flap"],
     "Finished Goods Material Number": "Item_Number",
     "EAN/UPC": "Barcode",
+    "Super Design": "Super_Design",
   },
   specialRules: {
     Barcode: {

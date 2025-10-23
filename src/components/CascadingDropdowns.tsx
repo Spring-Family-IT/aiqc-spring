@@ -96,7 +96,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
           // Filter out empty/ignored column names (N, R, W, X, Y, Z)
           const ignoredColumns = [
             'N', 'R', 'W', 'X', 'Y', 'Z',
-            'Super Theme', 'Product Version no.',
+            'Super Theme',
             'Geography',
             'Global launch date',
             'Marketing exit date',
