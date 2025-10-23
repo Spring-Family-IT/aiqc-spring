@@ -97,7 +97,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
           const ignoredColumns = [
             'N', 'R', 'W', 'X', 'Y', 'Z',
             'Super Theme',
-            'Geography',
+            'Geography', "Product Version no.",
             'Global launch date',
             'Marketing exit date',
             'Material group',
