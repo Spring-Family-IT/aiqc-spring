@@ -614,26 +614,45 @@ const Index = () => {
                     })}
                   />
                   
-                  {/* Analyze Document Button - Vertically aligned with PDF */}
-                  <div className="flex flex-col gap-4">
-          <Button
-            onClick={analyzePdf}
-            disabled={!pdfFile || !selectedModelId || isAnalyzing}
-            size="lg"
-            className="w-full"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <FileText className="w-5 h-5 mr-2" />
-                Analyze Document
-              </>
-            )}
-          </Button>
+                  {/* Analyze Document and Check Buttons - Side by side */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button
+                      onClick={analyzePdf}
+                      disabled={!pdfFile || !selectedModelId || isAnalyzing}
+                      size="lg"
+                      className="flex-1"
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="w-5 h-5 mr-2" />
+                          Analyze Document
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={comparePdfWithSelectedInputs}
+                      disabled={!pdfFile || !selectedModelId || selectedInputs.length === 0 || isComparing}
+                      size="lg"
+                      className="flex-1"
+                      variant="default"
+                    >
+                      {isComparing ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          Checking...
+                        </>
+                      ) : (
+                        <>
+                          <GitCompare className="w-5 h-5 mr-2" />
+                          Check
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
                 
@@ -656,28 +675,6 @@ const Index = () => {
             />
           </div>
 
-          {/* Check Button */}
-          <div className="flex justify-center">
-            <Button
-              onClick={comparePdfWithSelectedInputs}
-              disabled={!pdfFile || !selectedModelId || selectedInputs.length === 0 || isComparing}
-              size="lg"
-              className="px-8"
-              variant="default"
-            >
-              {isComparing ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Checking...
-                </>
-              ) : (
-                <>
-                  <GitCompare className="w-5 h-5 mr-2" />
-                  Check
-                </>
-              )}
-            </Button>
-          </div>
 
           {/* Comparison Results */}
           {comparisonResults && (

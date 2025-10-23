@@ -528,20 +528,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
         </div>
       )}
 
-      {/* Selected Inputs for Function */}
-      {selectedInputs.length > 0 && (
-        <div className="mt-6 p-4 bg-primary/10 rounded-lg border border-primary/20">
-          <h3 className="font-semibold mb-3">Selected Fields:</h3>
-          <div className="space-y-2">
-            {selectedInputs.map(({ column, value }) => (
-              <div key={column} className="flex items-center gap-2 text-sm">
-                <span className="font-medium text-primary">{column}:</span>
-                <code className="px-2 py-1 bg-background rounded text-foreground">{value}</code>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Selected Inputs for Function - HIDDEN */}
 
     </Card>
   );

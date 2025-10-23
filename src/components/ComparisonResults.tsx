@@ -95,12 +95,12 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
         <h3 className="text-lg font-semibold mb-4">Field Comparison Report</h3>
         <ScrollArea className="h-[500px]">
           <Table>
-            <TableHeader>
-              <TableRow>
+            <TableHeader className="sticky top-0 z-10 bg-background">
+              <TableRow className="border-b-2">
                 <TableHead className="w-[200px]">Field Name</TableHead>
-                <TableHead>Excel Value</TableHead>
-                <TableHead>PDF Value</TableHead>
-                <TableHead className="w-[150px]">Status</TableHead>
+                <TableHead>SAP Data (from Excel file)</TableHead>
+                <TableHead>Info from Pack</TableHead>
+                <TableHead className="w-[150px]">Comparison</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
