@@ -93,59 +93,67 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Field Comparison Report</h3>
-        <div className="border rounded-md">
+        
+        {/* Fixed Header Table */}
+        <div className="border rounded-t-md overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="w-[200px] font-semibold border-r">Field Name</TableHead>
+                <TableHead className="font-semibold border-r">SAP Data (from Excel file)</TableHead>
+                <TableHead className="font-semibold border-r">Info from Pack</TableHead>
+                <TableHead className="w-[150px] font-semibold">Comparison</TableHead>
+              </TableRow>
+            </TableHeader>
+          </Table>
+        </div>
+
+        {/* Scrollable Data Table */}
+        <div className="border border-t-0 rounded-b-md overflow-hidden">
           <ScrollArea className="h-[500px]">
             <Table>
-              <TableHeader className="sticky top-0 z-20 bg-background shadow-sm">
-                <TableRow className="border-b-2 bg-background hover:bg-background">
-                  <TableHead className="w-[200px] bg-background font-semibold">Field Name</TableHead>
-                  <TableHead className="bg-background font-semibold">SAP Data (from Excel file)</TableHead>
-                  <TableHead className="bg-background font-semibold">Info from Pack</TableHead>
-                  <TableHead className="w-[150px] bg-background font-semibold">Comparison</TableHead>
-                </TableRow>
-              </TableHeader>
-            <TableBody>
-              {results.map((result, index) => {
-                const statusBadge = 
-                  result.status === 'correct' ? (
-                    <Badge variant="default" className="bg-success text-success-foreground">
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      MATCHED
-                    </Badge>
-                  ) : result.status === 'incorrect' ? (
-                    <Badge variant="destructive">
-                      <XCircle className="w-3 h-3 mr-1" />
-                      MISMATCHED
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="bg-warning text-warning-foreground">
-                      <AlertCircle className="w-3 h-3 mr-1" />
-                      NOT FOUND
-                    </Badge>
-                  );
+              <TableBody>
+                {results.map((result, index) => {
+                  const statusBadge = 
+                    result.status === 'correct' ? (
+                      <Badge variant="default" className="bg-success text-success-foreground">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        MATCHED
+                      </Badge>
+                    ) : result.status === 'incorrect' ? (
+                      <Badge variant="destructive">
+                        <XCircle className="w-3 h-3 mr-1" />
+                        MISMATCHED
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="bg-warning text-warning-foreground">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        NOT FOUND
+                      </Badge>
+                    );
 
-                const rowClass = 
-                  result.status === 'correct' ? 'bg-success/5' :
-                  result.status === 'incorrect' ? 'bg-destructive/5' :
-                  'bg-warning/5';
-                  
-                return (
-                  <TableRow key={index} className={rowClass}>
-                    <TableCell className="font-medium">{result.field}</TableCell>
-                    <TableCell className="font-mono text-sm">{result.excelValue}</TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {result.pdfValue}
-                      {result.matchDetails && (
-                        <p className="text-xs text-muted-foreground mt-1 italic">{result.matchDetails}</p>
-                      )}
-                    </TableCell>
-                    <TableCell>{statusBadge}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+                  const rowClass = 
+                    result.status === 'correct' ? 'bg-success/5' :
+                    result.status === 'incorrect' ? 'bg-destructive/5' :
+                    'bg-warning/5';
+                    
+                  return (
+                    <TableRow key={index} className={rowClass}>
+                      <TableCell className="w-[200px] font-medium border-r">{result.field}</TableCell>
+                      <TableCell className="font-mono text-sm border-r">{result.excelValue}</TableCell>
+                      <TableCell className="font-mono text-sm border-r">
+                        {result.pdfValue}
+                        {result.matchDetails && (
+                          <p className="text-xs text-muted-foreground mt-1 italic">{result.matchDetails}</p>
+                        )}
+                      </TableCell>
+                      <TableCell className="w-[150px]">{statusBadge}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </ScrollArea>
         </div>
       </Card>
     </div>

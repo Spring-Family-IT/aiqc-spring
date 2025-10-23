@@ -85,10 +85,12 @@ const Index = () => {
   const handleFileSelect = (file: File) => {
     setPdfFile(file);
     setAnalysisResults(null);
+    setComparisonResults(null);
   };
 
   const handleExcelFileSelect = async (file: File) => {
     setExcelFile(file);
+    setComparisonResults(null);
     
     // Parse Excel file for comparison
     try {
