@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { FileUpload } from "@/components/FileUpload";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompare } from "lucide-react";
+import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompare, RefreshCw } from "lucide-react";
 import { Session } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { getFieldMapping } from "@/config/fieldMappings";
@@ -36,6 +36,7 @@ const Index = () => {
   const [azureEndpoint, setAzureEndpoint] = useState<string>("");
   const [apiVersion, setApiVersion] = useState<string>("");
   const [customCount, setCustomCount] = useState<number>(0);
+  const modelsLoadedRef = useRef(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -46,9 +47,11 @@ const Index = () => {
         setSession(session);
         if (!session) {
           navigate("/auth");
-        } else {
-          // Auto-load models when session is established
+          modelsLoadedRef.current = false;
+        } else if (!modelsLoadedRef.current) {
+          // Auto-load models only once when session is established
           loadAllModels();
+          modelsLoadedRef.current = true;
         }
       }
     );
@@ -58,9 +61,10 @@ const Index = () => {
       setSession(session);
       if (!session) {
         navigate("/auth");
-      } else {
-        // Auto-load models on initial load
+      } else if (!modelsLoadedRef.current) {
+        // Auto-load models on initial load only if not already loaded
         loadAllModels();
+        modelsLoadedRef.current = true;
       }
     });
 
@@ -495,6 +499,38 @@ const Index = () => {
     }
   };
 
+  const handleReset = async () => {
+    // Clear all file selections
+    setPdfFile(null);
+    setExcelFile(null);
+    
+    // Clear all results and data
+    setAnalysisResults(null);
+    setComparisonResults(null);
+    setExcelData([]);
+    setSelectedInputs([]);
+    
+    // Reset model selection
+    setSelectedModelId("");
+    setCustomModels([]);
+    setModels([]);
+    setCustomCount(0);
+    
+    // Reset Azure configuration
+    setAzureEndpoint("");
+    setApiVersion("");
+    
+    // Reload all models
+    modelsLoadedRef.current = false;
+    await loadAllModels();
+    modelsLoadedRef.current = true;
+    
+    toast({
+      title: "Reset complete",
+      description: "All data cleared and models reloaded successfully."
+    });
+  };
+
   if (!session) {
     return null; // Will redirect in useEffect
   }
@@ -532,6 +568,7 @@ const Index = () => {
                 endpoint={azureEndpoint}
                 apiVersion={apiVersion}
                 customModels={customCount}
+                onReset={handleReset}
               >
                 {/* Model Selection Dropdown */}
                 {customModels.length > 0 && (

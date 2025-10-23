@@ -1,19 +1,22 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Server, Package, Database } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Server, Package, Database, RefreshCw } from "lucide-react";
 
 interface ResourceDetailsProps {
   endpoint: string;
   apiVersion: string;
   customModels: number;
   children?: React.ReactNode;
+  onReset?: () => void;
 }
 
 export const ResourceDetails = ({ 
   endpoint, 
   apiVersion, 
   customModels,
-  children 
+  children,
+  onReset
 }: ResourceDetailsProps) => {
   return (
     <Card className="border-primary/20">
@@ -27,7 +30,7 @@ export const ResourceDetails = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Database className="w-4 h-4" />
@@ -48,6 +51,22 @@ export const ResourceDetails = ({
                 {apiVersion}
               </Badge>
             </div>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <RefreshCw className="w-4 h-4" />
+              Actions
+            </div>
+            <Button
+              onClick={onReset}
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reset
+            </Button>
           </div>
         </div>
 
