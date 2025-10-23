@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Server, Package, Database, RefreshCw } from "lucide-react";
+import { Server, Package, Database } from "lucide-react";
 
 interface ResourceDetailsProps {
   endpoint: string;
@@ -36,7 +36,7 @@ export const ResourceDetails = ({
               <Database className="w-4 h-4" />
               Endpoint
             </div>
-            <p className="text-sm font-mono bg-muted p-2 rounded break-all">
+            <p className="text-sm font-mono bg-muted p-2 rounded break-all text-right">
               {endpoint}
             </p>
           </div>
@@ -53,18 +53,13 @@ export const ResourceDetails = ({
             </div>
           </div>
           
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <RefreshCw className="w-4 h-4" />
-              Actions
-            </div>
+          <div className="space-y-2 flex items-end">
             <Button
               onClick={onReset}
               variant="outline"
               size="sm"
-              className="w-full gap-2"
+              className="px-3 py-1 text-xs h-8"
             >
-              <RefreshCw className="h-4 w-4" />
               Reset
             </Button>
           </div>
