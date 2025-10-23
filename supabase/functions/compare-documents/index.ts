@@ -223,7 +223,7 @@ serve(async (req) => {
             pdfValue: 'Not found in PDF',
             excelValue: excelValueStr,
             status: 'not-found',
-            matchDetails: `Expected PDF field: ${pdfFieldId}`
+            matchDetails: `Expected Label: ${pdfFieldId}`
           });
           continue;
         }
@@ -258,7 +258,7 @@ serve(async (req) => {
               pdfValue: 'Not found in PDF',
               excelValue: excelValueStr,
               status: 'not-found',
-              matchDetails: `Expected PDF field: ${pdfFieldId}`
+              matchDetails: `Expected Label: ${pdfFieldId}`
             });
           } else {
             // Apply special rules if needed
