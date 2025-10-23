@@ -93,16 +93,17 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Field Comparison Report</h3>
-        <ScrollArea className="h-[500px]">
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-background">
-              <TableRow className="border-b-2">
-                <TableHead className="w-[200px]">Field Name</TableHead>
-                <TableHead>SAP Data (from Excel file)</TableHead>
-                <TableHead>Info from Pack</TableHead>
-                <TableHead className="w-[150px]">Comparison</TableHead>
-              </TableRow>
-            </TableHeader>
+        <div className="border rounded-md">
+          <ScrollArea className="h-[500px]">
+            <Table>
+              <TableHeader className="sticky top-0 z-20 bg-background shadow-sm">
+                <TableRow className="border-b-2 bg-background hover:bg-background">
+                  <TableHead className="w-[200px] bg-background font-semibold">Field Name</TableHead>
+                  <TableHead className="bg-background font-semibold">SAP Data (from Excel file)</TableHead>
+                  <TableHead className="bg-background font-semibold">Info from Pack</TableHead>
+                  <TableHead className="w-[150px] bg-background font-semibold">Comparison</TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {results.map((result, index) => {
                 const statusBadge = 
@@ -145,6 +146,7 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
             </TableBody>
           </Table>
         </ScrollArea>
+        </div>
       </Card>
     </div>
   );

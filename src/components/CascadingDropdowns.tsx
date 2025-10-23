@@ -363,14 +363,14 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
     const eq = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
     const commIdxExact = columns.findIndex(h => eq(h, 'Communication no.'));
-    const versIdxExact = columns.findIndex(h => eq(h, 'Product Version no.'));
     const nameDepIdx = columns.findIndex(h => eq(h, 'Name of Dependency'));
 
     const commIdxLoose = columns.findIndex(h => /communication/.test(h.toLowerCase()) && /no|number/.test(h.toLowerCase()));
     const versIdxLoose = columns.findIndex(h => /product/.test(h.toLowerCase()) && /version/.test(h.toLowerCase()));
 
     const commIdx = commIdxExact >= 0 ? commIdxExact : commIdxLoose;
-    const versIdx = versIdxExact >= 0 ? versIdxExact : versIdxLoose;
+    // Priority: Name of Dependency > Product Version no. (legacy fallback)
+    const versIdx = nameDepIdx >= 0 ? nameDepIdx : versIdxLoose;
 
     const summary: any = {
       headers: columns,
@@ -379,7 +379,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
     };
 
     if (commIdx < 0 || versIdx < 0) {
-      summary.error = 'Could not locate Communication no. or Product Version no. columns in headers';
+      summary.error = 'Could not locate Communication no. or Name of Dependency columns in headers';
       return summary;
     }
 
