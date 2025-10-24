@@ -38,7 +38,6 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
     'EAN/UPC': 'EAN/UPC',
     'Super Design': 'Super Design',
     'Description': 'Description',
-    'Type': 'Type',
   };
 
   const getDisplayName = (column: string): string => {
