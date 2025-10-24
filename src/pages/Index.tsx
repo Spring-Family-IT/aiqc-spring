@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompare, RefreshCw } from "lucide-react";
+import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompare, RefreshCw, RotateCcw } from "lucide-react";
 import { Session } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { getFieldMapping } from "@/config/fieldMappings";
@@ -654,6 +654,15 @@ const Index = () => {
                           Check
                         </>
                       )}
+                    </Button>
+                    <Button
+                      onClick={handleReset}
+                      variant="outline"
+                      size="lg"
+                      className="flex-1"
+                    >
+                      <RotateCcw className="w-5 h-5 mr-2" />
+                      Reset All
                     </Button>
                   </div>
                 </div>

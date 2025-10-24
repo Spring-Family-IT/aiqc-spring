@@ -30,7 +30,7 @@ export const ResourceDetails = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Database className="w-4 h-4" />
@@ -51,17 +51,6 @@ export const ResourceDetails = ({
                 {apiVersion}
               </Badge>
             </div>
-          </div>
-          
-          <div className="space-y-2 flex items-end">
-            <Button
-              onClick={onReset}
-              variant="outline"
-              size="sm"
-              className="px-3 py-1 text-xs h-8"
-            >
-              Reset
-            </Button>
           </div>
         </div>
 
