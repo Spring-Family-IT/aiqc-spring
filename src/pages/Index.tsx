@@ -282,13 +282,22 @@ const Index = () => {
         'File Name': pdfFile.name
       };
 
-      // 3. Add RESULT columns (from comparison results)
-      comparisonResults.forEach((result: any) => {
-        const status = result.status === 'correct' ? 'MATCHED' : 
-                       result.status === 'incorrect' ? 'MISMATCHED' : 
-                       'Not Found';
-        reportRow[`RESULT_${result.field}`] = status;
-      });
+    // 3. Add RESULT columns (from comparison results)
+    comparisonResults.forEach((result: any) => {
+      const status = result.status === 'correct' ? 'MATCHED' : 
+                     result.status === 'incorrect' ? 'MISMATCHED' : 
+                     'Not Found';
+      
+      // Extract field name - if it contains parentheses, use only the content inside
+      // e.g., "Communication no. (SKU_Number_Front)" -> "SKU_Number_Front"
+      let fieldName = result.field;
+      const parenMatch = fieldName.match(/\(([^)]+)\)/);
+      if (parenMatch) {
+        fieldName = parenMatch[1]; // Extract text inside parentheses
+      }
+      
+      reportRow[`RESULT_${fieldName}`] = status;
+    });
 
       // 4. Add SAP columns (from selected inputs / Excel data)
       selectedInputs.forEach((input: any) => {
