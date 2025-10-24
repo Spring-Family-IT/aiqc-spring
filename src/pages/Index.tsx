@@ -462,7 +462,29 @@ const Index = () => {
       }
 
       if (data.error) {
-        throw new Error(data.error);
+        // If there are details from Azure, show them in a more user-friendly way
+        let errorMessage = data.error;
+        
+        if (data.details) {
+          try {
+            const details = typeof data.details === 'string' ? JSON.parse(data.details) : data.details;
+            if (details.error) {
+              // Extract specific error from Azure response
+              const azureError = details.error;
+              errorMessage = `${data.error}: ${azureError.message || 'Unknown Azure error'}`;
+              
+              // If there's an inner error with more details, include it
+              if (azureError.innererror?.message) {
+                errorMessage += ` (${azureError.innererror.message})`;
+              }
+            }
+          } catch (e) {
+            // If parsing fails, just use details as string
+            errorMessage = `${data.error}: ${data.details}`;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       setAnalysisResults(data);
@@ -474,7 +496,7 @@ const Index = () => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to analyze PDF";
       toast({
-        title: "Analysis error",
+        title: "Analysis Failed",
         description: errorMessage,
         variant: "destructive",
       });
