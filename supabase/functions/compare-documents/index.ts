@@ -206,16 +206,19 @@ serve(async (req) => {
       for (const page of analysisResult.pages) {
         if (page.barcodes && page.barcodes.length > 0) {
           for (const barcode of page.barcodes) {
-            // Extract UPCA barcode
-            if (barcode.kind === 'UPCA' && barcode.value) {
-              barcodes_barcode = barcode.value;
-              console.log(`Found UPCA barcode: ${barcode.value}`);
+            const kind = (barcode.kind || '').toLowerCase().replace(/[-_\s]/g, '');
+            const value = barcode.value;
+            
+            // Extract UPCA barcode (handles: UPCA, upca, Upca, UPC-A, upc_a, etc.)
+            if (kind === 'upca' && value) {
+              barcodes_barcode = value;
+              console.log(`Found UPCA barcode (kind: ${barcode.kind}): ${value}`);
             }
             
-            // Extract DataMatrix barcode
-            if (barcode.kind === 'DataMatrix' && barcode.value) {
-              barcodes_datamatrix = barcode.value;
-              console.log(`Found DataMatrix barcode: ${barcode.value}`);
+            // Extract DataMatrix barcode (handles: DataMatrix, datamatrix, data-matrix, etc.)
+            if (kind === 'datamatrix' && value) {
+              barcodes_datamatrix = value;
+              console.log(`Found DataMatrix barcode (kind: ${barcode.kind}): ${value}`);
             }
           }
         }
@@ -230,6 +233,15 @@ serve(async (req) => {
       }
       
       console.log(`Barcode extraction complete - UPCA: ${barcodes_barcode || 'N/A'}, DataMatrix: ${barcodes_datamatrix || 'N/A'}`);
+      
+      // Debug: Log all barcode kinds found in the document
+      const allKinds = analysisResult.pages
+        .flatMap((page: any) => page.barcodes || [])
+        .map((b: any) => b.kind)
+        .filter(Boolean);
+      if (allKinds.length > 0) {
+        console.log(`All barcode kinds found in document: ${JSON.stringify(allKinds)}`);
+      }
     }
 
     console.log(`Extracted ${Object.keys(pdfData).length} fields from PDF`);
