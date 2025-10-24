@@ -69,7 +69,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
               
               // Special case: column P (index 15) should be named "Type"
               if (i === 15) {
-                header = 'Type';
+                header = 'Description';
               } else {
                 header = colName;
               }
