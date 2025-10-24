@@ -142,37 +142,34 @@ serve(async (req) => {
       }
     }
 
-    // Extract barcodes from all pages
-    let barcodes_barcode = 'NA';  // For UPCA barcodes
-    let barcodes_datamatrix = 'NA';  // For DataMatrix barcodes
-
+    // Extract barcodes from all pages using actual kind names
     if (analysisResult.pages && analysisResult.pages.length > 0) {
       console.log('Processing barcodes from pages...');
       
       for (const page of analysisResult.pages) {
         if (page.barcodes && page.barcodes.length > 0) {
           for (const barcode of page.barcodes) {
-            // Extract UPCA barcode
-            if (barcode.kind === 'UPCA' && barcode.value) {
-              barcodes_barcode = barcode.value;
-              console.log(`Found UPCA barcode: ${barcode.value}`);
+            const kind = barcode.kind || '';
+            const kindNormalized = kind.toLowerCase().replace(/[-_\s]/g, '');
+            const value = barcode.value;
+            
+            // Extract UPCA barcode (handles: UPCA, upca, Upca, UPC-A, upc_a, etc.)
+            if (kindNormalized === 'upca' && value) {
+              extractedFields['UPCA'] = value;
+              console.log(`Found UPCA barcode: ${value}`);
             }
             
             // Extract DataMatrix barcode
-            if (barcode.kind === 'DataMatrix' && barcode.value) {
-              barcodes_datamatrix = barcode.value;
-              console.log(`Found DataMatrix barcode: ${barcode.value}`);
+            if (kindNormalized === 'datamatrix' && value) {
+              extractedFields['DataMatrix'] = value;
+              console.log(`Found DataMatrix barcode: ${value}`);
             }
           }
         }
       }
     }
 
-    // Add barcode fields to extracted fields
-    extractedFields['Barcodes_barcode'] = barcodes_barcode;
-    extractedFields['Barcodes_datamatrix'] = barcodes_datamatrix;
-
-    console.log(`Barcode extraction complete - UPCA: ${barcodes_barcode}, DataMatrix: ${barcodes_datamatrix}`);
+    console.log(`Barcode extraction complete - UPCA: ${extractedFields['UPCA'] || 'NA'}, DataMatrix: ${extractedFields['DataMatrix'] || 'NA'}`);
     console.log(`Extracted ${Object.keys(extractedFields).length} fields from PDF (including barcodes)`);
 
     return new Response(
