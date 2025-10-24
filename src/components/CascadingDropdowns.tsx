@@ -29,7 +29,16 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
 
   // Process Excel file when it changes
   useEffect(() => {
-    if (!excelFile) return;
+    if (!excelFile) {
+      // Clear all state when Excel file is removed
+      setExcelData([]);
+      setColumns([]);
+      setSelectedValues({});
+      setCheckedColumns({});
+      setCheckAll(false);
+      setIsPrimaryKeysComplete(false);
+      return;
+    }
 
     const processFile = async () => {
       try {
