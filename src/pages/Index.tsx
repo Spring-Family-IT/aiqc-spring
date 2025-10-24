@@ -716,80 +716,85 @@ const Index = () => {
           )}
 
 
-          {/* File Upload Section - PDF and Excel in Same Row */}
+          {/* File Upload Section - PDF and Excel Cards in Same Row */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Left Column: PDF Upload + Analyze Button */}
-                <div className="space-y-6">
-                  <FileUpload
-                    onFileSelect={handleFileSelect}
-                    pdfFile={pdfFile}
-                    onValidationError={(message) => toast({
-                      title: "Validation Error",
-                      description: message,
-                      variant: "destructive"
-                    })}
-                  />
-                  
-                  {/* Analyze Document and Check Buttons - Side by side */}
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Button
-                      onClick={analyzePdf}
-                      disabled={!pdfFile || !selectedModelId || isAnalyzing}
-                      size="lg"
-                      className="flex-1"
-                    >
-                      {isAnalyzing ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Analyzing...
-                        </>
-                      ) : (
-                        <>
-                          <FileText className="w-5 h-5 mr-2" />
-                          Analyze Document
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      onClick={comparePdfWithSelectedInputs}
-                      disabled={!pdfFile || !selectedModelId || selectedInputs.length === 0 || isComparing}
-                      size="lg"
-                      className="flex-1"
-                      variant="default"
-                    >
-                      {isComparing ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Checking...
-                        </>
-                      ) : (
-                        <>
-                          <GitCompare className="w-5 h-5 mr-2" />
-                          Check
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      onClick={handleReset}
-                      variant="outline"
-                      size="lg"
-                      className="flex-1"
-                    >
-                      <RotateCcw className="w-5 h-5 mr-2" />
-                      Reset All
-                    </Button>
-                  </div>
-                </div>
+                {/* PDF Upload Card */}
+                <FileUpload
+                  onFileSelect={handleFileSelect}
+                  pdfFile={pdfFile}
+                  onValidationError={(message) => toast({
+                    title: "Validation Error",
+                    description: message,
+                    variant: "destructive"
+                  })}
+                />
                 
-                {/* Right Column: Excel Upload */}
-                <div>
-                  <FileUpload
-                    onExcelSelect={handleExcelFileSelect}
-                    excelFile={excelFile}
-                  />
-                </div>
+                {/* Excel Upload Card */}
+                <FileUpload
+                  onExcelSelect={handleExcelFileSelect}
+                  excelFile={excelFile}
+                />
+              </div>
+            </Card>
+          </div>
+
+          {/* Action Buttons Section - Full Width Second Row */}
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <Card className="p-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                {/* Analyze Document Button */}
+                <Button
+                  onClick={analyzePdf}
+                  disabled={!pdfFile || !selectedModelId || isAnalyzing}
+                  size="lg"
+                  className="flex-1"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-5 h-5 mr-2" />
+                      Analyze Document
+                    </>
+                  )}
+                </Button>
+                
+                {/* Check Button */}
+                <Button
+                  onClick={comparePdfWithSelectedInputs}
+                  disabled={!pdfFile || !selectedModelId || selectedInputs.length === 0 || isComparing}
+                  size="lg"
+                  className="flex-1"
+                  variant="default"
+                >
+                  {isComparing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <GitCompare className="w-5 h-5 mr-2" />
+                      Check
+                    </>
+                  )}
+                </Button>
+                
+                {/* Reset All Button */}
+                <Button
+                  onClick={handleReset}
+                  variant="outline"
+                  size="lg"
+                  className="flex-1"
+                >
+                  <RotateCcw className="w-5 h-5 mr-2" />
+                  Reset All
+                </Button>
               </div>
             </Card>
           </div>
