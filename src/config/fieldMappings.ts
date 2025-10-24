@@ -25,10 +25,16 @@ export const LP5_FIELD_MAPPING: FieldMappingConfig = {
     "Piece count of FG": "PieceCount",
     Component: ["Material Number_Info Box", "MaterialBottom", "MaterialSide"],
     "Finished Goods Material Number": "ItemNumber",
-    "EAN/UPC": "BarcodeString",
+    "EAN/UPC": ["Barcode", "Barcodes_barcode", "Barcodes_datamatrix"],
   },
   specialRules: {
-    BarcodeString: {
+    Barcode: {
+      removeSpaces: true,
+    },
+    Barcodes_barcode: {
+      removeSpaces: true,
+    },
+    Barcodes_datamatrix: {
       removeSpaces: true,
     },
   },
@@ -44,11 +50,17 @@ export const MODEL_PKG_V2_COMBINED_MAPPING: FieldMappingConfig = {
     "Piece count of FG": "Piece_Count",
     Component: ["Material_Number_MA", "Material_Number_Bottom", "Material_Number_SA_Flap"],
     "Finished Goods Material Number": "Item_Number",
-    "EAN/UPC": "Barcode",
+    "EAN/UPC": ["Barcode", "Barcodes_barcode", "Barcodes_datamatrix"],
     "Super Design": "Super_Design",
   },
   specialRules: {
     Barcode: {
+      removeSpaces: true,
+    },
+    Barcodes_barcode: {
+      removeSpaces: true,
+    },
+    Barcodes_datamatrix: {
       removeSpaces: true,
     },
   },

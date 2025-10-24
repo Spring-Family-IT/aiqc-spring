@@ -14,7 +14,7 @@ const LP5_MAPPING: Record<string, string | string[]> = {
   "Piece count of FG": "PieceCount",
   Component: ["Material Number_Info Box", "MaterialBottom", "MaterialSide"],
   "Finished Goods Material Number": "ItemNumber",
-  "EAN/UPC": "BarcodeString",
+  "EAN/UPC": ["Barcode", "Barcodes_barcode", "Barcodes_datamatrix"],
 };
 
 // Model_PKG_v2_Combined Field Mapping
@@ -32,7 +32,7 @@ const MODEL_PKG_V2_COMBINED_MAPPING: Record<string, string | string[]> = {
   "Piece count of FG": "Piece_Count",
   Component: ["Material_Number_MA", "Material_Number_Bottom", "Material_Number_SA_Flap"],
   "Finished Goods Material Number": "Item_Number",
-  "EAN/UPC": "Barcode",
+  "EAN/UPC": ["Barcode", "Barcodes_barcode", "Barcodes_datamatrix"],
   "Super Design": "Super_Design",
 };
 
@@ -43,8 +43,9 @@ const MAPPING_REGISTRY: Record<string, Record<string, string | string[]>> = {
 };
 
 const SPECIAL_RULES: Record<string, { removeSpaces?: boolean; toLowerCase?: boolean }> = {
-  BarcodeString: { removeSpaces: true }, // For LP5
-  Barcode: { removeSpaces: true }, // For Model_PKG_v2_Combined
+  Barcode: { removeSpaces: true },
+  Barcodes_barcode: { removeSpaces: true },
+  Barcodes_datamatrix: { removeSpaces: true },
 };
 
 serve(async (req) => {
@@ -259,35 +260,32 @@ serve(async (req) => {
           const pdfValue = pdfData[pdfFieldId];
           const excelValueStr = String(excelValue);
 
-          if (!pdfValue) {
-            comparisonResults.push({
-              field: `${excelColumnName} (${pdfFieldId})`,
-              pdfValue: "Not found in PDF",
-              excelValue: excelValueStr,
-              status: "not-found",
-              matchDetails: `Expected Label: ${pdfFieldId}`,
-            });
-          } else {
-            // Apply special rules if needed
-            let normalizedPdfValue = pdfValue;
-            let normalizedExcelValue = excelValueStr;
-
-            const specialRule = SPECIAL_RULES[pdfFieldId];
-            if (specialRule?.removeSpaces) {
-              normalizedPdfValue = normalizedPdfValue.replace(/\s+/g, "");
-              normalizedExcelValue = normalizedExcelValue.replace(/\s+/g, "");
-            }
-
-            // Compare individual values
-            const match = normalizedPdfValue.toLowerCase() === normalizedExcelValue.toLowerCase();
-
-            comparisonResults.push({
-              field: `${excelColumnName} (${pdfFieldId})`,
-              pdfValue: pdfValue, // Original value for display
-              excelValue: excelValueStr,
-              status: match ? "correct" : "incorrect",
-            });
+          // Skip completely if barcode field is 'NA', empty, or null
+          // Don't add to results, don't display, don't count
+          if (!pdfValue || pdfValue.trim() === '' || pdfValue.trim().toUpperCase() === 'NA') {
+            console.log(`Skipping ${pdfFieldId} - value is '${pdfValue}' (NA or empty)`);
+            continue; // Skip to next field without adding to comparisonResults
           }
+
+          // Apply special rules if needed
+          let normalizedPdfValue = pdfValue;
+          let normalizedExcelValue = excelValueStr;
+
+          const specialRule = SPECIAL_RULES[pdfFieldId];
+          if (specialRule?.removeSpaces) {
+            normalizedPdfValue = normalizedPdfValue.replace(/\s+/g, "");
+            normalizedExcelValue = normalizedExcelValue.replace(/\s+/g, "");
+          }
+
+          // Compare individual values
+          const match = normalizedPdfValue.toLowerCase() === normalizedExcelValue.toLowerCase();
+
+          comparisonResults.push({
+            field: `${excelColumnName} (${pdfFieldId})`,
+            pdfValue: pdfValue, // Original value for display
+            excelValue: excelValueStr,
+            status: match ? "correct" : "incorrect",
+          });
         }
       }
     }

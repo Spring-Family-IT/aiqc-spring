@@ -27,6 +27,24 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
   
   const PRIMARY_KEYS = ['Communication no.', 'Name of Dependency', 'Description'];
 
+  // Display name mapping for UI (internal data processing still uses original column names)
+  const COLUMN_DISPLAY_NAMES: Record<string, string> = {
+    'Communication no.': 'SKU',
+    'Product Age Classification': 'Age',
+    'Name of Dependency': 'Version',
+    'Piece count of FG': 'Piece Count',
+    'Component': 'Material Number',
+    'Finished Goods Material Number': 'Item Number',
+    'EAN/UPC': 'EAN/UPC',
+    'Super Design': 'Super Design',
+    'Description': 'Description',
+    'Type': 'Type',
+  };
+
+  const getDisplayName = (column: string): string => {
+    return COLUMN_DISPLAY_NAMES[column] || column;
+  };
+
   // Process Excel file when it changes
   useEffect(() => {
     if (!excelFile) {
@@ -489,7 +507,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
               <div key={column} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium min-w-[200px]">
-                    {column}
+                    {getDisplayName(column)}
                   </label>
                   <Select
                     value={selectedValues[column] || ''}
@@ -497,7 +515,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
                     disabled={isDisabled}
                   >
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder={`Select ${column}`} />
+                      <SelectValue placeholder={`Select ${getDisplayName(column)}`} />
                     </SelectTrigger>
                     <SelectContent className="bg-background z-50 max-h-[300px]">
                       {options.map((option) => (
@@ -530,7 +548,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
               <div key={column} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium min-w-[200px]">
-                    {column}
+                    {getDisplayName(column)}
                   </label>
                   <div className="flex-1 px-3 py-2 bg-muted/50 rounded-md text-sm">
                     {value || '—'}
