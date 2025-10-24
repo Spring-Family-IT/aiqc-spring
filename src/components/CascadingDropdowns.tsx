@@ -45,6 +45,17 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
     return COLUMN_DISPLAY_NAMES[column] || column;
   };
 
+  const normalizeValue = (column: string, value: string): string => {
+    // For Piece Count field, append " pcs/pzs" if not already present
+    if (column === 'Piece count of FG') {
+      const trimmedValue = value.trim();
+      if (!trimmedValue.endsWith(' pcs/pzs')) {
+        return `${trimmedValue} pcs/pzs`;
+      }
+    }
+    return value;
+  };
+
   // Process Excel file when it changes
   useEffect(() => {
     if (!excelFile) {
@@ -315,7 +326,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
       .filter(([_, isChecked]) => isChecked)
       .map(([col]) => ({
         column: col,
-        value: selectedValues[col] || ''
+        value: normalizeValue(col, selectedValues[col] || '')
       }))
       .filter(item => item.value !== '');
     
@@ -340,7 +351,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
         .filter(col => selectedValues[col])
         .map(col => ({
           column: col,
-          value: selectedValues[col]
+          value: normalizeValue(col, selectedValues[col])
         }));
       onSelectedInputsChange?.(allInputs);
     } else {
@@ -355,7 +366,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
       .filter(([_, isChecked]) => isChecked)
       .map(([column]) => ({
         column,
-        value: selectedValues[column] || ''
+        value: normalizeValue(column, selectedValues[column] || '')
       }))
       .filter(item => item.value !== '');
   };
