@@ -14,7 +14,7 @@ const LP5_MAPPING: Record<string, string | string[]> = {
   "Piece count of FG": "PieceCount",
   Component: ["Material Number_Info Box", "MaterialBottom", "MaterialSide"],
   "Finished Goods Material Number": "ItemNumber",
-  "EAN/UPC": ["Barcode", "Barcodes_barcode", "Barcodes_datamatrix"],
+  "EAN/UPC": ["Barcode", "UPCA", "DataMatrix"],
 };
 
 // Model_PKG_v2_Combined Field Mapping
@@ -32,7 +32,7 @@ const MODEL_PKG_V2_COMBINED_MAPPING: Record<string, string | string[]> = {
   "Piece count of FG": "Piece_Count",
   Component: ["Material_Number_MA", "Material_Number_Bottom", "Material_Number_SA_Flap"],
   "Finished Goods Material Number": "Item_Number",
-  "EAN/UPC": ["Barcode", "Barcodes_barcode", "Barcodes_datamatrix"],
+  "EAN/UPC": ["Barcode", "UPCA", "DataMatrix"],
   "Super Design": "Super_Design",
 };
 
@@ -44,8 +44,8 @@ const MAPPING_REGISTRY: Record<string, Record<string, string | string[]>> = {
 
 const SPECIAL_RULES: Record<string, { removeSpaces?: boolean; toLowerCase?: boolean }> = {
   Barcode: { removeSpaces: true },
-  Barcodes_barcode: { removeSpaces: true },
-  Barcodes_datamatrix: { removeSpaces: true },
+  UPCA: { removeSpaces: true },
+  DataMatrix: { removeSpaces: true },
 };
 
 serve(async (req) => {
@@ -190,8 +190,8 @@ serve(async (req) => {
       
       // Debug: Log barcode-related fields after extraction
       console.log('Doc fields snapshot:', {
-        Barcodes_barcode: pdfData['Barcodes_barcode'],
-        Barcodes_datamatrix: pdfData['Barcodes_datamatrix'],
+        UPCA: pdfData['UPCA'],
+        DataMatrix: pdfData['DataMatrix'],
         Barcode: pdfData['Barcode'],
       });
     }
@@ -220,41 +220,31 @@ serve(async (req) => {
 
     // Extract barcodes from pages
     if (analysisResult.pages) {
-      let barcodes_barcode = '';
-      let barcodes_datamatrix = '';
-      
       console.log('Processing barcodes from pages...');
       
       for (const page of analysisResult.pages) {
         if (page.barcodes && page.barcodes.length > 0) {
           for (const barcode of page.barcodes) {
-            const kind = (barcode.kind || '').toLowerCase().replace(/[-_\s]/g, '');
+            const kind = barcode.kind || '';  // Keep original casing
+            const kindNormalized = kind.toLowerCase().replace(/[-_\s]/g, '');
             const value = barcode.value;
             
             // Extract UPCA barcode (handles: UPCA, upca, Upca, UPC-A, upc_a, etc.)
-            if (kind === 'upca' && value) {
-              barcodes_barcode = value;
+            if (kindNormalized === 'upca' && value) {
+              pdfData['UPCA'] = value;  // Use original kind name
               console.log(`Found UPCA barcode (kind: ${barcode.kind}): ${value}`);
             }
             
             // Extract DataMatrix barcode (handles: DataMatrix, datamatrix, data-matrix, etc.)
-            if (kind === 'datamatrix' && value) {
-              barcodes_datamatrix = value;
+            if (kindNormalized === 'datamatrix' && value) {
+              pdfData['DataMatrix'] = value;  // Use original kind name
               console.log(`Found DataMatrix barcode (kind: ${barcode.kind}): ${value}`);
             }
           }
         }
       }
       
-      // Add barcode fields to pdfData
-      if (barcodes_barcode) {
-        pdfData['Barcodes_barcode'] = barcodes_barcode;
-      }
-      if (barcodes_datamatrix) {
-        pdfData['Barcodes_datamatrix'] = barcodes_datamatrix;
-      }
-      
-      console.log(`Barcode extraction complete - UPCA: ${barcodes_barcode || 'N/A'}, DataMatrix: ${barcodes_datamatrix || 'N/A'}`);
+      console.log(`Barcode extraction complete - UPCA: ${pdfData['UPCA'] || 'N/A'}, DataMatrix: ${pdfData['DataMatrix'] || 'N/A'}`);
       
       // Debug: Log all barcode kinds found in the document
       const allKinds = analysisResult.pages
@@ -276,8 +266,8 @@ serve(async (req) => {
       console.log('EAN/UPC mapping:', MAPPING_REGISTRY[modelId]?.['EAN/UPC'] || MODEL_PKG_V2_COMBINED_MAPPING['EAN/UPC']);
       console.log('Barcode pdfData values:', {
         Barcode: pdfData['Barcode'],
-        Barcodes_barcode: pdfData['Barcodes_barcode'],
-        Barcodes_datamatrix: pdfData['Barcodes_datamatrix'],
+        UPCA: pdfData['UPCA'],
+        DataMatrix: pdfData['DataMatrix'],
       });
     }
 
