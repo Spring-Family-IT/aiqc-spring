@@ -269,6 +269,18 @@ serve(async (req) => {
     console.log(`Extracted ${Object.keys(pdfData).length} fields from PDF`);
     console.log("Comparing with selected inputs using field mappings...");
 
+    // Debug: Log EAN/UPC related data before comparison
+    const eanUpcInput = selectedInputs.find((si: any) => si.column === 'EAN/UPC');
+    if (eanUpcInput) {
+      console.log('EAN/UPC Excel input:', eanUpcInput);
+      console.log('EAN/UPC mapping:', MAPPING_REGISTRY[modelId]?.['EAN/UPC'] || MODEL_PKG_V2_COMBINED_MAPPING['EAN/UPC']);
+      console.log('Barcode pdfData values:', {
+        Barcode: pdfData['Barcode'],
+        Barcodes_barcode: pdfData['Barcodes_barcode'],
+        Barcodes_datamatrix: pdfData['Barcodes_datamatrix'],
+      });
+    }
+
     // Compare PDF data with selected inputs using field mappings
     const comparisonResults = [];
 
@@ -326,23 +338,25 @@ serve(async (req) => {
       // Handle array mapping (one Excel column maps to multiple PDF fields)
       // Create separate rows for each PDF field
       else if (Array.isArray(mappedPdfFields)) {
+        // Debug logging for EAN/UPC specifically
+        if (excelColumnName === 'EAN/UPC') {
+          console.log(`Processing EAN/UPC comparison - mappedPdfFields: ${mappedPdfFields.join(', ')}`);
+        }
+
         for (const pdfFieldId of mappedPdfFields) {
           const pdfValue = pdfData[pdfFieldId];
           const excelValueStr = String(excelValue);
 
-          // Only skip Barcodes_barcode and Barcodes_datamatrix if 'NA'
-          // Always process 'Barcode' field even if 'NA' or empty
-          const shouldSkip = 
-            (pdfFieldId === 'Barcodes_barcode' || pdfFieldId === 'Barcodes_datamatrix') &&
-            (!pdfValue || pdfValue.trim() === '' || pdfValue.trim().toUpperCase() === 'NA');
-
-          if (shouldSkip) {
-            console.log(`Skipping ${pdfFieldId} - value is '${pdfValue}' (NA or empty)`);
-            continue; // Skip to next field without adding to comparisonResults
+          // Debug logging for each EAN/UPC subfield
+          if (excelColumnName === 'EAN/UPC') {
+            console.log(`  Checking ${pdfFieldId}: pdfValue='${pdfValue}', excelValue='${excelValueStr}'`);
           }
 
-          // Handle 'Barcode' field even when 'NA' or empty
+          // If pdfValue is missing or 'NA', create a 'not-found' row for ALL barcode fields
           if (!pdfValue || pdfValue.trim() === '' || pdfValue.trim().toUpperCase() === 'NA') {
+            if (excelColumnName === 'EAN/UPC') {
+              console.log(`  → ${pdfFieldId} not found, creating 'not-found' row`);
+            }
             comparisonResults.push({
               field: `${excelColumnName} (${pdfFieldId})`,
               pdfValue: pdfValue || "Not found in PDF",
@@ -365,6 +379,10 @@ serve(async (req) => {
 
           // Compare individual values
           const match = normalizedPdfValue.toLowerCase() === normalizedExcelValue.toLowerCase();
+
+          if (excelColumnName === 'EAN/UPC') {
+            console.log(`  → ${pdfFieldId} comparison: match=${match}, status='${match ? "correct" : "incorrect"}'`);
+          }
 
           comparisonResults.push({
             field: `${excelColumnName} (${pdfFieldId})`,
