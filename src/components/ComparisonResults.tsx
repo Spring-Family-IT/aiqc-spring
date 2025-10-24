@@ -5,6 +5,31 @@ import { CheckCircle2, XCircle, AlertCircle, Download } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+const COLUMN_DISPLAY_NAMES: Record<string, string> = {
+  'Communication no.': 'SKU',
+  'Product Age Classification': 'Age',
+  'Name of Dependency': 'Version',
+  'Piece count of FG': 'Piece Count',
+  'Component': 'Material Number',
+  'Finished Goods Material Number': 'Item Number',
+  'Material': 'Product Name',
+  'EAN/UPC': 'EAN/UPC',
+  'Super Design': 'Super Design',
+  'Description': 'Description',
+  'Type': 'Type',
+};
+
+const getDisplayName = (fieldName: string): string => {
+  // Handle fields with PDF field names in parentheses like "EAN/UPC (Barcode)"
+  const match = fieldName.match(/^(.+?)\s*\((.+)\)$/);
+  if (match) {
+    const [, excelColumn, pdfField] = match;
+    const displayName = COLUMN_DISPLAY_NAMES[excelColumn] || excelColumn;
+    return `${displayName} (${pdfField})`;
+  }
+  return COLUMN_DISPLAY_NAMES[fieldName] || fieldName;
+};
+
 interface ComparisonData {
   field: string;
   pdfValue: string;
@@ -147,7 +172,7 @@ export const ComparisonResults = ({ results, onDownloadReport }: ComparisonResul
                     
                   return (
                     <TableRow key={index} className={rowClass}>
-                      <TableCell className="w-[20%] font-medium border-r">{result.field}</TableCell>
+                      <TableCell className="w-[20%] font-medium border-r">{getDisplayName(result.field)}</TableCell>
                       <TableCell className="w-[30%] font-mono text-sm border-r">{result.excelValue}</TableCell>
                       <TableCell className="w-[30%] font-mono text-sm border-r">
                         {result.pdfValue}
