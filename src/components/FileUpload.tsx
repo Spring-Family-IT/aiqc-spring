@@ -56,7 +56,7 @@ export const FileUpload = ({ onFileSelect, onExcelSelect, pdfFile, excelFile, on
       {onFileSelect && (
         <Card
           className={cn(
-            "relative border-2 border-dashed transition-all duration-300 hover:border-primary cursor-pointer w-full max-w-md",
+            "relative border-2 border-dashed transition-all duration-300 hover:border-primary cursor-pointer w-full max-w-md min-h-[320px]",
             pdfFile ? "border-success bg-success/5" : "border-muted"
           )}
           onDrop={handleDrop}
@@ -96,7 +96,7 @@ export const FileUpload = ({ onFileSelect, onExcelSelect, pdfFile, excelFile, on
       {onExcelSelect && (
         <Card
           className={cn(
-            "relative border-2 border-dashed transition-all duration-300 hover:border-primary cursor-pointer w-full max-w-md",
+            "relative border-2 border-dashed transition-all duration-300 hover:border-primary cursor-pointer w-full max-w-lg min-h-[320px]",
             excelFile ? "border-success bg-success/5" : "border-muted"
           )}
           onDrop={handleDrop}
