@@ -196,6 +196,42 @@ serve(async (req) => {
       }
     }
 
+    // Extract barcodes from pages
+    if (analysisResult.pages) {
+      let barcodes_barcode = '';
+      let barcodes_datamatrix = '';
+      
+      console.log('Processing barcodes from pages...');
+      
+      for (const page of analysisResult.pages) {
+        if (page.barcodes && page.barcodes.length > 0) {
+          for (const barcode of page.barcodes) {
+            // Extract UPCA barcode
+            if (barcode.kind === 'UPCA' && barcode.value) {
+              barcodes_barcode = barcode.value;
+              console.log(`Found UPCA barcode: ${barcode.value}`);
+            }
+            
+            // Extract DataMatrix barcode
+            if (barcode.kind === 'DataMatrix' && barcode.value) {
+              barcodes_datamatrix = barcode.value;
+              console.log(`Found DataMatrix barcode: ${barcode.value}`);
+            }
+          }
+        }
+      }
+      
+      // Add barcode fields to pdfData
+      if (barcodes_barcode) {
+        pdfData['Barcodes_barcode'] = barcodes_barcode;
+      }
+      if (barcodes_datamatrix) {
+        pdfData['Barcodes_datamatrix'] = barcodes_datamatrix;
+      }
+      
+      console.log(`Barcode extraction complete - UPCA: ${barcodes_barcode || 'N/A'}, DataMatrix: ${barcodes_datamatrix || 'N/A'}`);
+    }
+
     console.log(`Extracted ${Object.keys(pdfData).length} fields from PDF`);
     console.log("Comparing with selected inputs using field mappings...");
 
@@ -272,7 +308,7 @@ serve(async (req) => {
           }
 
           // Handle 'Barcode' field even when 'NA' or empty
-          if (!pdfValue || pdfValue.trim() === '') {
+          if (!pdfValue || pdfValue.trim() === '' || pdfValue.trim().toUpperCase() === 'NA') {
             comparisonResults.push({
               field: `${excelColumnName} (${pdfFieldId})`,
               pdfValue: pdfValue || "Not found in PDF",
