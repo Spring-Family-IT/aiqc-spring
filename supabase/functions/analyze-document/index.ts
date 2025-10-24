@@ -46,7 +46,7 @@ serve(async (req) => {
     const pdfBuffer = await pdfFile.arrayBuffer();
 
     // Start document analysis with the selected custom model
-    const analyzeUrl = `${azureEndpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=2023-07-31`;
+    const analyzeUrl = `${azureEndpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=2023-07-31&features=barcodes&features=highResolution`;
     
     const analyzeResponse = await fetch(analyzeUrl, {
       method: 'POST',
@@ -142,7 +142,38 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Extracted ${Object.keys(extractedFields).length} fields from PDF`);
+    // Extract barcodes from all pages
+    let barcodes_barcode = 'NA';  // For UPCA barcodes
+    let barcodes_datamatrix = 'NA';  // For DataMatrix barcodes
+
+    if (analysisResult.pages && analysisResult.pages.length > 0) {
+      console.log('Processing barcodes from pages...');
+      
+      for (const page of analysisResult.pages) {
+        if (page.barcodes && page.barcodes.length > 0) {
+          for (const barcode of page.barcodes) {
+            // Extract UPCA barcode
+            if (barcode.kind === 'UPCA' && barcode.value) {
+              barcodes_barcode = barcode.value;
+              console.log(`Found UPCA barcode: ${barcode.value}`);
+            }
+            
+            // Extract DataMatrix barcode
+            if (barcode.kind === 'DataMatrix' && barcode.value) {
+              barcodes_datamatrix = barcode.value;
+              console.log(`Found DataMatrix barcode: ${barcode.value}`);
+            }
+          }
+        }
+      }
+    }
+
+    // Add barcode fields to extracted fields
+    extractedFields['Barcodes_barcode'] = barcodes_barcode;
+    extractedFields['Barcodes_datamatrix'] = barcodes_datamatrix;
+
+    console.log(`Barcode extraction complete - UPCA: ${barcodes_barcode}, DataMatrix: ${barcodes_datamatrix}`);
+    console.log(`Extracted ${Object.keys(extractedFields).length} fields from PDF (including barcodes)`);
 
     return new Response(
       JSON.stringify({ 
