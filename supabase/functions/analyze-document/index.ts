@@ -170,7 +170,30 @@ serve(async (req) => {
     }
 
     console.log(`Barcode extraction complete - UPCA: ${extractedFields['UPCA'] || 'NA'}, DataMatrix: ${extractedFields['DataMatrix'] || 'NA'}`);
-    console.log(`Extracted ${Object.keys(extractedFields).length} fields from PDF (including barcodes)`);
+
+    // Normalize barcode field names - remove legacy keys and ensure canonical names
+    const renameMap: Record<string, 'UPCA' | 'DataMatrix'> = {
+      'Barcodes_barcode': 'UPCA',
+      'Barcodes_datamatrix': 'DataMatrix',
+      'barcodes_barcode': 'UPCA',
+      'barcodes_datamatrix': 'DataMatrix',
+    };
+
+    for (const [oldKey, newKey] of Object.entries(renameMap)) {
+      const val = (extractedFields as any)[oldKey];
+      if (val && (!extractedFields[newKey] || extractedFields[newKey] === 'NA')) {
+        extractedFields[newKey] = val;
+      }
+      if (oldKey in extractedFields) {
+        delete (extractedFields as any)[oldKey];
+      }
+    }
+
+    console.log('Normalized barcode keys. Final set includes:', {
+      UPCA: extractedFields['UPCA'] || 'NA',
+      DataMatrix: extractedFields['DataMatrix'] || 'NA',
+      totalFields: Object.keys(extractedFields).length,
+    });
 
     return new Response(
       JSON.stringify({ 
