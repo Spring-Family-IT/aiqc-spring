@@ -168,10 +168,32 @@ serve(async (req) => {
     if (analysisResult.documents && analysisResult.documents[0]) {
       const doc = analysisResult.documents[0];
       for (const [fieldName, fieldValue] of Object.entries(doc.fields || {})) {
-        if (fieldValue && (fieldValue as any).content !== undefined) {
-          pdfData[fieldName] = String((fieldValue as any).content).trim();
+        if (!fieldValue) continue;
+        const fv: any = fieldValue;
+
+        // Prefer valueString, fallback to content, then numeric types
+        let extracted: string | undefined = undefined;
+        if (fv.valueString !== undefined && fv.valueString !== null) {
+          extracted = String(fv.valueString).trim();
+        } else if (fv.content !== undefined && fv.content !== null) {
+          extracted = String(fv.content).trim();
+        } else if (fv.valueNumber !== undefined && fv.valueNumber !== null) {
+          extracted = String(fv.valueNumber);
+        } else if (fv.valueInteger !== undefined && fv.valueInteger !== null) {
+          extracted = String(fv.valueInteger);
+        }
+
+        if (extracted && extracted !== "") {
+          pdfData[fieldName] = extracted;
         }
       }
+      
+      // Debug: Log barcode-related fields after extraction
+      console.log('Doc fields snapshot:', {
+        Barcodes_barcode: pdfData['Barcodes_barcode'],
+        Barcodes_datamatrix: pdfData['Barcodes_datamatrix'],
+        Barcode: pdfData['Barcode'],
+      });
     }
 
     // Extract from keyValuePairs with original keys
