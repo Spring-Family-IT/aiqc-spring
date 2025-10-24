@@ -46,7 +46,7 @@ serve(async (req) => {
     const pdfBuffer = await pdfFile.arrayBuffer();
 
     // Start document analysis with the selected custom model
-    const analyzeUrl = `${azureEndpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=2023-07-31&features=barcodes&features=highResolution`;
+    const analyzeUrl = `${azureEndpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=2023-07-31&features=barcodes&features=ocrHighResolution`;
     
     const analyzeResponse = await fetch(analyzeUrl, {
       method: 'POST',
