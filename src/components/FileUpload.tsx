@@ -1,6 +1,7 @@
 import { Upload, FileText, FileSpreadsheet } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useRef } from "react";
 
 interface FileUploadProps {
   onFileSelect?: (file: File) => void;
@@ -11,6 +12,9 @@ interface FileUploadProps {
 }
 
 export const FileUpload = ({ onFileSelect, onExcelSelect, pdfFile, excelFile, onValidationError }: FileUploadProps) => {
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const excelInputRef = useRef<HTMLInputElement>(null);
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
@@ -32,6 +36,8 @@ export const FileUpload = ({ onFileSelect, onExcelSelect, pdfFile, excelFile, on
         return;
       }
       onFileSelect?.(file);
+      // Reset input value to allow re-upload of same file
+      e.target.value = '';
     }
   };
 
@@ -39,6 +45,8 @@ export const FileUpload = ({ onFileSelect, onExcelSelect, pdfFile, excelFile, on
     const file = e.target.files?.[0];
     if (file) {
       onExcelSelect?.(file);
+      // Reset input value to allow re-upload of same file
+      e.target.value = '';
     }
   };
 
@@ -56,6 +64,7 @@ export const FileUpload = ({ onFileSelect, onExcelSelect, pdfFile, excelFile, on
         >
           <label className="flex flex-col items-center justify-center p-8 cursor-pointer">
             <input
+              ref={pdfInputRef}
               type="file"
               accept=".pdf"
               className="hidden"
@@ -95,6 +104,7 @@ export const FileUpload = ({ onFileSelect, onExcelSelect, pdfFile, excelFile, on
         >
           <label className="flex flex-col items-center justify-center p-8 cursor-pointer">
             <input
+              ref={excelInputRef}
               type="file"
               accept=".xlsx,.xls"
               className="hidden"
