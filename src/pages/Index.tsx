@@ -260,6 +260,113 @@ const Index = () => {
     });
   };
 
+  const downloadComparisonReport = () => {
+    if (!comparisonResults || !analysisResults || !session?.user?.email || !pdfFile) {
+      toast({
+        title: "Cannot generate report",
+        description: "Missing required data for report generation",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // 1. Prepare timestamp
+      const now = new Date();
+      const timestamp = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')} ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+      
+      // 2. Build the data row
+      const reportRow: any = {
+        'Timestamp': timestamp,
+        'User': session.user.email,
+        'File Name': pdfFile.name
+      };
+
+      // 3. Add RESULT columns (from comparison results)
+      comparisonResults.forEach((result: any) => {
+        const status = result.status === 'correct' ? 'MATCHED' : 
+                       result.status === 'incorrect' ? 'MISMATCHED' : 
+                       'Not Found';
+        reportRow[`RESULT_${result.field}`] = status;
+      });
+
+      // 4. Add SAP columns (from selected inputs / Excel data)
+      selectedInputs.forEach((input: any) => {
+        reportRow[`${input.column}_SAP`] = input.value;
+      });
+
+      // 5. Add PDF Analysis columns (from analysis results)
+      Object.entries(analysisResults.fields || {}).forEach(([key, value]) => {
+        reportRow[key] = String(value);
+      });
+
+      // 6. Create worksheet and workbook
+      const worksheet = XLSX.utils.json_to_sheet([reportRow]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+
+      // 7. Apply cell styling
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+      
+      // Get column indices
+      let resultStartCol = 3; // After Timestamp, User, File Name
+      let sapStartCol = resultStartCol + comparisonResults.length;
+      let pdfStartCol = sapStartCol + selectedInputs.length;
+
+      // Apply RED color to RESULT columns (headers)
+      for (let col = resultStartCol; col < sapStartCol; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+        if (!worksheet[cellAddress]) continue;
+        
+        if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+        worksheet[cellAddress].s = {
+          font: { color: { rgb: "FF0000" }, bold: true }
+        };
+      }
+
+      // Apply BLUE color to SAP columns (headers)
+      for (let col = sapStartCol; col < pdfStartCol; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+        if (!worksheet[cellAddress]) continue;
+        
+        if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+        worksheet[cellAddress].s = {
+          font: { color: { rgb: "0000FF" }, bold: true }
+        };
+      }
+
+      // Apply BLACK color to PDF columns (headers) - default but make bold
+      for (let col = pdfStartCol; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+        if (!worksheet[cellAddress]) continue;
+        
+        if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+        worksheet[cellAddress].s = {
+          font: { color: { rgb: "000000" }, bold: true }
+        };
+      }
+
+      // 8. Generate filename and download
+      const selectedModel = models.find(m => m.modelId === selectedModelId);
+      const modelName = selectedModel?.description || selectedModel?.modelId || 'Model';
+      const fileName = `Report_${modelName}.xlsx`;
+      
+      XLSX.writeFile(workbook, fileName);
+
+      toast({
+        title: "Report downloaded",
+        description: `Comparison report saved as ${fileName}`
+      });
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast({
+        title: "Report generation failed",
+        description: error instanceof Error ? error.message : "Failed to generate Excel report",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleSelectedInputsChange = (inputs: { column: string; value: string }[]) => {
     setSelectedInputs(inputs);
   };
@@ -690,7 +797,10 @@ const Index = () => {
           {/* Comparison Results */}
           {comparisonResults && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <ComparisonResults results={comparisonResults} />
+              <ComparisonResults 
+                results={comparisonResults}
+                onDownloadReport={downloadComparisonReport}
+              />
             </div>
           )}
 

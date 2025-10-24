@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, XCircle, AlertCircle, Download } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -14,9 +15,10 @@ interface ComparisonData {
 
 interface ComparisonResultsProps {
   results: ComparisonData[];
+  onDownloadReport?: () => void;
 }
 
-export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
+export const ComparisonResults = ({ results, onDownloadReport }: ComparisonResultsProps) => {
   const correctCount = results.filter(r => r.status === 'correct').length;
   const incorrectCount = results.filter(r => r.status === 'incorrect').length;
   const notFoundCount = results.filter(r => r.status === 'not-found').length;
@@ -92,7 +94,13 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
       </Card>
 
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Field Comparison Report</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Field Comparison Report</h3>
+          <Button onClick={onDownloadReport} variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Save
+          </Button>
+        </div>
         
         {/* Fixed Header Table */}
         <div className="border rounded-t-md overflow-hidden">
