@@ -96,13 +96,13 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
         
         {/* Fixed Header Table */}
         <div className="border rounded-t-md overflow-hidden">
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="w-[200px] font-semibold border-r">Field Name</TableHead>
-                <TableHead className="font-semibold border-r">SAP Data (from Excel file)</TableHead>
-                <TableHead className="font-semibold border-r">Info from Pack</TableHead>
-                <TableHead className="w-[150px] font-semibold">Comparison</TableHead>
+                <TableHead className="w-[20%] font-semibold border-r">Field Name</TableHead>
+                <TableHead className="w-[30%] font-semibold border-r">SAP Data (from Excel file)</TableHead>
+                <TableHead className="w-[30%] font-semibold border-r">Info from Pack</TableHead>
+                <TableHead className="w-[20%] font-semibold">Comparison</TableHead>
               </TableRow>
             </TableHeader>
           </Table>
@@ -111,7 +111,7 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
         {/* Scrollable Data Table */}
         <div className="border border-t-0 rounded-b-md overflow-hidden">
           <ScrollArea className="h-[500px]">
-            <Table>
+            <Table className="table-fixed">
               <TableBody>
                 {results.map((result, index) => {
                   const statusBadge = 
@@ -139,15 +139,15 @@ export const ComparisonResults = ({ results }: ComparisonResultsProps) => {
                     
                   return (
                     <TableRow key={index} className={rowClass}>
-                      <TableCell className="w-[200px] font-medium border-r">{result.field}</TableCell>
-                      <TableCell className="font-mono text-sm border-r">{result.excelValue}</TableCell>
-                      <TableCell className="font-mono text-sm border-r">
+                      <TableCell className="w-[20%] font-medium border-r">{result.field}</TableCell>
+                      <TableCell className="w-[30%] font-mono text-sm border-r">{result.excelValue}</TableCell>
+                      <TableCell className="w-[30%] font-mono text-sm border-r">
                         {result.pdfValue}
                         {result.matchDetails && (
                           <p className="text-xs text-muted-foreground mt-1 italic">{result.matchDetails}</p>
                         )}
                       </TableCell>
-                      <TableCell className="w-[150px]">{statusBadge}</TableCell>
+                      <TableCell className="w-[20%]">{statusBadge}</TableCell>
                     </TableRow>
                   );
                 })}
