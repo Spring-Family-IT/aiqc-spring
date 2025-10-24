@@ -35,6 +35,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
     'Piece count of FG': 'Piece Count',
     'Component': 'Material Number',
     'Finished Goods Material Number': 'Item Number',
+    'Material': 'Product Name',
     'EAN/UPC': 'EAN/UPC',
     'Super Design': 'Super Design',
     'Description': 'Description',
