@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ExpectedEdgeVersions, FunctionName, FunctionVersionInfo } from "@/config/edgeVersions";
+import { CheckCircle, XCircle } from "lucide-react";
 
 const functionsBase = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -12,8 +14,47 @@ const MOCK_PDF_BASE64 = "JVBERi0xLjQKJeLjz9MKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW5
 
 const Diagnostics = () => {
   const [log, setLog] = useState<string>("");
+  const [versions, setVersions] = useState<Record<string, FunctionVersionInfo | null>>({});
+  const [loadingVersions, setLoadingVersions] = useState<Record<string, boolean>>({});
 
   const append = (obj: any) => setLog((prev) => prev + "\n" + JSON.stringify(obj, null, 2));
+
+  const checkFunctionVersion = async (functionName: FunctionName) => {
+    setLoadingVersions(prev => ({ ...prev, [functionName]: true }));
+    append({ test: `Checking ${functionName} version (GET)` });
+    
+    try {
+      const res = await fetch(`${functionsBase}/${functionName}`, {
+        method: "GET",
+        headers: {
+          "apikey": anonKey,
+        },
+      });
+      
+      const json = await res.json();
+      append({ status: res.status, ok: res.ok, version: json });
+      
+      if (res.ok && json.name && json.version) {
+        setVersions(prev => ({ ...prev, [functionName]: json }));
+      } else {
+        setVersions(prev => ({ ...prev, [functionName]: null }));
+      }
+    } catch (e) {
+      append({ fetchError: String(e) });
+      setVersions(prev => ({ ...prev, [functionName]: null }));
+    } finally {
+      setLoadingVersions(prev => ({ ...prev, [functionName]: false }));
+    }
+  };
+
+  const checkAllVersions = async () => {
+    setLog("");
+    append({ test: "Checking all function versions..." });
+    const functions: FunctionName[] = ["analyze-document", "compare-documents", "get-document-models", "health-check"];
+    for (const fn of functions) {
+      await checkFunctionVersion(fn);
+    }
+  };
 
   const createMockPDF = () => {
     const binaryString = atob(MOCK_PDF_BASE64);
@@ -236,6 +277,72 @@ const Diagnostics = () => {
   return (
     <div className="mx-auto max-w-5xl p-6 space-y-4">
       <h1 className="text-2xl font-semibold">Edge Functions Diagnostics</h1>
+      
+      {/* Version and Deploy Status */}
+      <Card className="p-4 space-y-2">
+        <h2 className="text-lg font-semibold">Version and Deploy Status</h2>
+        <div className="text-sm text-muted-foreground">Check which backend versions are currently deployed</div>
+        <Separator />
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button onClick={checkAllVersions}>Check All Versions</Button>
+          <Button variant="secondary" onClick={() => checkFunctionVersion("analyze-document")}>
+            Check analyze-document
+          </Button>
+          <Button variant="secondary" onClick={() => checkFunctionVersion("compare-documents")}>
+            Check compare-documents
+          </Button>
+          <Button variant="secondary" onClick={() => checkFunctionVersion("get-document-models")}>
+            Check get-document-models
+          </Button>
+          <Button variant="secondary" onClick={() => checkFunctionVersion("health-check")}>
+            Check health-check
+          </Button>
+        </div>
+        
+        {/* Version Status Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {(Object.keys(ExpectedEdgeVersions) as FunctionName[]).map((fn) => {
+            const expected = ExpectedEdgeVersions[fn];
+            const actual = versions[fn];
+            const isMatch = actual?.version === expected;
+            const isLoading = loadingVersions[fn];
+            
+            return (
+              <div key={fn} className="border rounded-lg p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-sm">{fn}</span>
+                  {!isLoading && actual && (
+                    isMatch ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-600" />
+                    )
+                  )}
+                </div>
+                <div className="text-xs space-y-0.5">
+                  <div className="text-muted-foreground">
+                    Expected: <span className="font-mono">{expected}</span>
+                  </div>
+                  {actual ? (
+                    <>
+                      <div className={isMatch ? "text-green-600" : "text-red-600"}>
+                        Actual: <span className="font-mono">{actual.version}</span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        Built: {new Date(actual.buildTime).toLocaleString()}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-muted-foreground">
+                      {isLoading ? "Loading..." : "Not checked yet"}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
       
       {/* Model Fetching Functions */}
       <Card className="p-4 space-y-2">

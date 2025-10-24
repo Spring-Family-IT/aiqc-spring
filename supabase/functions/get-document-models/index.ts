@@ -1,13 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+const FUNCTION_NAME = "get-document-models";
+const FUNCTION_VERSION = "2025-10-24-v1";
+const BUILD_TIME = new Date().toISOString();
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+console.log(`[${FUNCTION_NAME}] v${FUNCTION_VERSION} built at ${BUILD_TIME}`);
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('null', { headers: corsHeaders });
+  }
+
+  // GET request returns version info
+  if (req.method === 'GET') {
+    return new Response(
+      JSON.stringify({
+        name: FUNCTION_NAME,
+        version: FUNCTION_VERSION,
+        buildTime: BUILD_TIME,
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
@@ -88,7 +106,12 @@ serve(async (req) => {
           customCount: customModels.length,
           prebuiltCount: prebuiltModels.length,
           endpoint: azureEndpoint,
-          apiVersion: apiVersion
+          apiVersion: apiVersion,
+          version: {
+            name: FUNCTION_NAME,
+            version: FUNCTION_VERSION,
+            buildTime: BUILD_TIME,
+          },
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -149,7 +172,12 @@ serve(async (req) => {
           apiVersion: apiVersion,
           message: projects.length === 0 
             ? 'Custom models exist but have no project tags. Tag your models with "projectId" and "projectName" in Azure.'
-            : `Found ${projects.length} projects`
+            : `Found ${projects.length} projects`,
+          version: {
+            name: FUNCTION_NAME,
+            version: FUNCTION_VERSION,
+            buildTime: BUILD_TIME,
+          },
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -174,7 +202,12 @@ serve(async (req) => {
         customModelsCount: customModels.length,
         totalModelsCount: allModels.length,
         endpoint: azureEndpoint,
-        apiVersion: apiVersion
+        apiVersion: apiVersion,
+        version: {
+          name: FUNCTION_NAME,
+          version: FUNCTION_VERSION,
+          buildTime: BUILD_TIME,
+        },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

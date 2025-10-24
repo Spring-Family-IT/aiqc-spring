@@ -11,10 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompare, RefreshCw, RotateCcw } from "lucide-react";
+import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompare, RefreshCw, RotateCcw, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Session } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { getFieldMapping } from "@/config/fieldMappings";
+import { normalizeBarcodeFields } from "@/lib/barcodeNormalizer";
+import { ExpectedEdgeVersions, FunctionName } from "@/config/edgeVersions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -36,9 +39,52 @@ const Index = () => {
   const [azureEndpoint, setAzureEndpoint] = useState<string>("");
   const [apiVersion, setApiVersion] = useState<string>("");
   const [customCount, setCustomCount] = useState<number>(0);
+  const [backendVersionsOutdated, setBackendVersionsOutdated] = useState<boolean>(false);
+  const [backendVersionsChecked, setBackendVersionsChecked] = useState<boolean>(false);
   const modelsLoadedRef = useRef(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Check backend versions on mount
+  useEffect(() => {
+    checkBackendVersions();
+  }, []);
+
+  const checkBackendVersions = async () => {
+    const functionsBase = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    
+    try {
+      const functions: FunctionName[] = ["analyze-document", "compare-documents", "get-document-models", "health-check"];
+      let hasOutdated = false;
+
+      for (const fn of functions) {
+        try {
+          const res = await fetch(`${functionsBase}/${fn}`, {
+            method: "GET",
+            headers: { "apikey": anonKey },
+          });
+          
+          if (res.ok) {
+            const json = await res.json();
+            const expected = ExpectedEdgeVersions[fn];
+            if (json.version !== expected) {
+              hasOutdated = true;
+              console.warn(`Function ${fn} version mismatch: expected ${expected}, got ${json.version}`);
+            }
+          }
+        } catch (e) {
+          console.warn(`Could not check version for ${fn}:`, e);
+        }
+      }
+
+      setBackendVersionsOutdated(hasOutdated);
+      setBackendVersionsChecked(true);
+    } catch (e) {
+      console.error("Error checking backend versions:", e);
+      setBackendVersionsChecked(true);
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener first
@@ -239,8 +285,11 @@ const Index = () => {
   const downloadAnalysisCSV = () => {
     if (!analysisResults || !analysisResults.fields) return;
 
+    // Normalize barcode fields before exporting
+    const normalizedFields = normalizeBarcodeFields(analysisResults.fields);
+
     // Convert fields object to array format for CSV
-    const csvData = Object.entries(analysisResults.fields).map(([field, value]) => ({
+    const csvData = Object.entries(normalizedFields).map(([field, value]) => ({
       Field: field,
       Value: String(value)
     }));
@@ -304,8 +353,9 @@ const Index = () => {
         reportRow[`${input.column}_SAP`] = input.value;
       });
 
-      // 5. Add PDF Analysis columns (from analysis results)
-      Object.entries(analysisResults.fields || {}).forEach(([key, value]) => {
+      // 5. Add PDF Analysis columns (from analysis results - normalized)
+      const normalizedFields = normalizeBarcodeFields(analysisResults.fields || {});
+      Object.entries(normalizedFields).forEach(([key, value]) => {
         reportRow[key] = String(value);
       });
 
@@ -485,6 +535,11 @@ const Index = () => {
         }
         
         throw new Error(errorMessage);
+      }
+
+      // Normalize barcode fields before setting results
+      if (data.fields) {
+        data.fields = normalizeBarcodeFields(data.fields);
       }
 
       setAnalysisResults(data);
@@ -682,6 +737,28 @@ const Index = () => {
           {/* Header */}
           <div className="text-center space-y-4">
             <div className="flex justify-end items-center gap-4 mb-4">
+              {/* Backend Status Indicator */}
+              {backendVersionsChecked && (
+                <Alert className={`flex items-center gap-2 py-2 px-3 w-auto ${backendVersionsOutdated ? 'border-amber-500 bg-amber-50' : 'border-green-500 bg-green-50'}`}>
+                  {backendVersionsOutdated ? (
+                    <>
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-xs text-amber-900 m-0">
+                        Backend may be outdated.{' '}
+                        <a href="/diagnostics" className="underline font-medium">Check Diagnostics</a>
+                      </AlertDescription>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <AlertDescription className="text-xs text-green-900 m-0">
+                        Backend up to date
+                      </AlertDescription>
+                    </>
+                  )}
+                </Alert>
+              )}
+              
               <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md">
                 <span className="text-sm font-medium">{session.user.email}</span>
               </div>
