@@ -25,7 +25,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
   const [isPrimaryKeysComplete, setIsPrimaryKeysComplete] = useState(false);
   const { toast } = useToast();
   
-  const PRIMARY_KEYS = ['Communication no.', 'Name of Dependency', 'Type'];
+  const PRIMARY_KEYS = ['Communication no.', 'Name of Dependency', 'Description'];
 
   // Process Excel file when it changes
   useEffect(() => {
