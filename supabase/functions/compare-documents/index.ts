@@ -260,14 +260,30 @@ serve(async (req) => {
           const pdfValue = pdfData[pdfFieldId];
           const excelValueStr = String(excelValue);
 
-          // Skip completely if barcode field is 'NA', empty, or null
-          // Don't add to results, don't display, don't count
-          if (!pdfValue || pdfValue.trim() === '' || pdfValue.trim().toUpperCase() === 'NA') {
+          // Only skip Barcodes_barcode and Barcodes_datamatrix if 'NA'
+          // Always process 'Barcode' field even if 'NA' or empty
+          const shouldSkip = 
+            (pdfFieldId === 'Barcodes_barcode' || pdfFieldId === 'Barcodes_datamatrix') &&
+            (!pdfValue || pdfValue.trim() === '' || pdfValue.trim().toUpperCase() === 'NA');
+
+          if (shouldSkip) {
             console.log(`Skipping ${pdfFieldId} - value is '${pdfValue}' (NA or empty)`);
             continue; // Skip to next field without adding to comparisonResults
           }
 
-          // Apply special rules if needed
+          // Handle 'Barcode' field even when 'NA' or empty
+          if (!pdfValue || pdfValue.trim() === '') {
+            comparisonResults.push({
+              field: `${excelColumnName} (${pdfFieldId})`,
+              pdfValue: pdfValue || "Not found in PDF",
+              excelValue: excelValueStr,
+              status: "not-found",
+              matchDetails: `Expected Label: ${pdfFieldId}`,
+            });
+            continue;
+          }
+
+          // Apply special rules if needed (remove spaces for all barcode types)
           let normalizedPdfValue = pdfValue;
           let normalizedExcelValue = excelValueStr;
 
