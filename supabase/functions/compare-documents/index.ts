@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const FUNCTION_NAME = "compare-documents";
-const FUNCTION_VERSION = "2025-10-26-barcode-fix-v2";
+const FUNCTION_VERSION = "2025-10-26-barcode-fix-v3";
 const BUILD_TIME = new Date().toISOString();
 
 const corsHeaders = {
@@ -202,7 +202,12 @@ serve(async (req) => {
         }
 
         if (extracted && extracted !== "") {
-          pdfData[fieldName] = extracted;
+          // Remove spaces from barcode-related fields
+          if (fieldName === 'Barcode' || fieldName === 'UPCA' || fieldName === 'DataMatrix') {
+            pdfData[fieldName] = extracted.replace(/\s+/g, '');
+          } else {
+            pdfData[fieldName] = extracted;
+          }
         }
       }
       
@@ -360,18 +365,12 @@ serve(async (req) => {
             console.log(`  Checking ${pdfFieldId}: pdfValue='${pdfValue}', excelValue='${excelValueStr}'`);
           }
 
-          // If pdfValue is missing or 'NA', create a 'not-found' row for ALL barcode fields
+          // Skip creating rows for barcode fields that don't exist in the PDF
+          // (different PDFs may have different barcode types)
           if (!pdfValue || pdfValue.trim() === '' || pdfValue.trim().toUpperCase() === 'NA') {
             if (excelColumnName === 'EAN/UPC') {
-              console.log(`  → ${pdfFieldId} not found, creating 'not-found' row`);
+              console.log(`  → ${pdfFieldId} not present in PDF, skipping (not an error)`);
             }
-            comparisonResults.push({
-              field: `${excelColumnName} (${pdfFieldId})`,
-              pdfValue: pdfValue || "Not found in PDF",
-              excelValue: excelValueStr,
-              status: "not-found",
-              matchDetails: `Expected Label: ${pdfFieldId}`,
-            });
             continue;
           }
 
