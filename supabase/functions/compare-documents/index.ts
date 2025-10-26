@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const FUNCTION_NAME = "compare-documents";
-const FUNCTION_VERSION = "2025-10-26-barcode-fix-v1";
+const FUNCTION_VERSION = "2025-10-26-barcode-fix-v2";
 const BUILD_TIME = new Date().toISOString();
 
 const corsHeaders = {
@@ -249,13 +249,13 @@ serve(async (req) => {
             
             // Extract UPCA barcode (handles: UPCA, upca, Upca, UPC-A, upc_a, etc.)
             if (kindNormalized === 'upca' && value) {
-              pdfData['UPCA'] = value;  // Use original kind name
+              pdfData['UPCA'] = value.replace(/\s+/g, '');  // Remove all spaces
               console.log(`Found UPCA barcode (kind: ${barcode.kind}): ${value}`);
             }
             
             // Extract DataMatrix barcode (handles: DataMatrix, datamatrix, data-matrix, etc.)
             if (kindNormalized === 'datamatrix' && value) {
-              pdfData['DataMatrix'] = value;  // Use original kind name
+              pdfData['DataMatrix'] = value.replace(/\s+/g, '');  // Remove all spaces
               console.log(`Found DataMatrix barcode (kind: ${barcode.kind}): ${value}`);
             }
           }

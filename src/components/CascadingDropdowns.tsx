@@ -14,9 +14,10 @@ interface ExcelData {
 interface CascadingDropdownsProps {
   excelFile?: File | null;
   onSelectedInputsChange?: (inputs: { column: string; value: string }[]) => void;
+  onPrimaryKeyChange?: () => void;
 }
 
-export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: CascadingDropdownsProps) => {
+export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange, onPrimaryKeyChange }: CascadingDropdownsProps) => {
   const [excelData, setExcelData] = useState<ExcelData[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [selectedValues, setSelectedValues] = useState<{ [key: string]: string }>({});
@@ -270,6 +271,9 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange }: Cascad
     const isPrimaryKey = PRIMARY_KEYS.includes(column);
     
     if (isPrimaryKey) {
+      // Notify parent that primary key has changed (to reset comparison results)
+      onPrimaryKeyChange?.();
+      
       // Clear all selections after this primary key in the PRIMARY_KEYS array
       const primaryKeyIndex = PRIMARY_KEYS.indexOf(column);
       PRIMARY_KEYS.slice(primaryKeyIndex + 1).forEach(key => {

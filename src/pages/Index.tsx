@@ -430,6 +430,10 @@ const Index = () => {
     setSelectedInputs(inputs);
   };
 
+  const handlePrimaryKeyChange = () => {
+    setComparisonResults(null);
+  };
+
   const comparePdfWithSelectedInputs = async () => {
     if (!pdfFile || !selectedModelId || selectedInputs.length === 0) {
       toast({
@@ -902,7 +906,8 @@ const Index = () => {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <CascadingDropdowns 
               excelFile={excelFile}
-              onSelectedInputsChange={handleSelectedInputsChange} 
+              onSelectedInputsChange={handleSelectedInputsChange}
+              onPrimaryKeyChange={handlePrimaryKeyChange}
             />
           </div>
 
