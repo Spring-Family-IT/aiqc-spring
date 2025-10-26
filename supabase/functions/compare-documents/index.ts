@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const FUNCTION_NAME = "compare-documents";
-const FUNCTION_VERSION = "2025-10-24-v1";
+const FUNCTION_VERSION = "2025-10-26-barcode-fix-v1";
 const BUILD_TIME = new Date().toISOString();
 
 const corsHeaders = {
@@ -110,7 +110,7 @@ serve(async (req) => {
     const pdfBuffer = await pdfFile.arrayBuffer();
 
     // Start document analysis with the selected custom model
-    const analyzeUrl = `${azureEndpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=2023-07-31`;
+    const analyzeUrl = `${azureEndpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=2023-07-31&features=barcodes&features=ocrHighResolution`;
 
     const analyzeResponse = await fetch(analyzeUrl, {
       method: "POST",
