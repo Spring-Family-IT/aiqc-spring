@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const FUNCTION_NAME = "analyze-document";
-const FUNCTION_VERSION = "2025-10-24-normalize-v2";
+const FUNCTION_VERSION = "2025-10-26-normalize-v3";
 const BUILD_TIME = new Date().toISOString();
 
 const corsHeaders = {
@@ -141,7 +141,13 @@ serve(async (req) => {
       const doc = analysisResult.documents[0];
       if (doc.fields) {
         for (const [fieldName, fieldValue] of Object.entries(doc.fields)) {
-          const value = (fieldValue as any)?.content || (fieldValue as any)?.valueString || (fieldValue as any)?.valueNumber || 'N/A';
+          let value = (fieldValue as any)?.content || (fieldValue as any)?.valueString || (fieldValue as any)?.valueNumber || 'N/A';
+          
+          // Remove spaces from barcode-related fields
+          if (fieldName === 'Barcode' || fieldName === 'UPCA' || fieldName === 'DataMatrix') {
+            value = String(value).replace(/\s+/g, '');
+          }
+          
           extractedFields[fieldName] = value;
         }
       }
@@ -173,13 +179,13 @@ serve(async (req) => {
             
             // Extract UPCA barcode (handles: UPCA, upca, Upca, UPC-A, upc_a, etc.)
             if (kindNormalized === 'upca' && value) {
-              extractedFields['UPCA'] = value;
+              extractedFields['UPCA'] = value.replace(/\s+/g, '');
               console.log(`Found UPCA barcode: ${value}`);
             }
             
             // Extract DataMatrix barcode
             if (kindNormalized === 'datamatrix' && value) {
-              extractedFields['DataMatrix'] = value;
+              extractedFields['DataMatrix'] = value.replace(/\s+/g, '');
               console.log(`Found DataMatrix barcode: ${value}`);
             }
           }
