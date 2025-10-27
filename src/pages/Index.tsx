@@ -45,9 +45,14 @@ const Index = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Control visibility of backend status indicator
+  const SHOW_BACKEND_STATUS = false; // Set to true to re-enable
+
   // Check backend versions on mount
   useEffect(() => {
-    checkBackendVersions();
+    if (SHOW_BACKEND_STATUS) {
+      checkBackendVersions();
+    }
   }, []);
 
   const checkBackendVersions = async () => {
@@ -742,7 +747,7 @@ const Index = () => {
           <div className="text-center space-y-4">
             <div className="flex justify-end items-center gap-4 mb-4">
               {/* Backend Status Indicator */}
-              {backendVersionsChecked && (
+              {SHOW_BACKEND_STATUS && backendVersionsChecked && (
                 <Alert className={`flex items-center gap-2 py-2 px-3 w-auto ${backendVersionsOutdated ? 'border-amber-500 bg-amber-50' : 'border-green-500 bg-green-50'}`}>
                   {backendVersionsOutdated ? (
                     <>
