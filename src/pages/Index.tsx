@@ -832,11 +832,7 @@ const Index = () => {
               <Card className="p-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Select Analysis Model</h3>
-                    <Button onClick={handleReset} variant="ghost" size="sm">
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Reset
-                    </Button>
+                    <h3 className="text-lg font-semibold">Select Model</h3>
                   </div>
                   <Select value={selectedModelId} onValueChange={setSelectedModelId}>
                     <SelectTrigger className="w-full">
@@ -846,7 +842,6 @@ const Index = () => {
                       {customModels.map((model) => (
                         <SelectItem key={model.modelId} value={model.modelId}>
                           <div className="flex flex-col">
-                            <span className="font-medium">{model.description || model.modelId}</span>
                             <span className="text-xs text-muted-foreground">{model.modelId}</span>
                           </div>
                         </SelectItem>
