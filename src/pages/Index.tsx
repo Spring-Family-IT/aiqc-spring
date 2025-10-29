@@ -47,6 +47,9 @@ const Index = () => {
 
   // Control visibility of backend status indicator
   const SHOW_BACKEND_STATUS = false; // Set to true to re-enable
+  
+  // Control visibility of Azure Resource Details
+  const SHOW_AZURE_RESOURCE_DETAILS = false; // Set to true to show endpoint and API version
 
   // Check backend versions on mount
   useEffect(() => {
@@ -788,7 +791,7 @@ const Index = () => {
           </div>
 
           {/* Resource Details */}
-          {azureEndpoint && apiVersion && (
+          {SHOW_AZURE_RESOURCE_DETAILS && azureEndpoint && apiVersion && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <ResourceDetails
                 endpoint={azureEndpoint}
@@ -820,6 +823,38 @@ const Index = () => {
                   </div>
                 )}
               </ResourceDetails>
+            </div>
+          )}
+
+          {/* Model Selection - Shown when Azure details are hidden */}
+          {!SHOW_AZURE_RESOURCE_DETAILS && customModels.length > 0 && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Card className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Select Analysis Model</h3>
+                    <Button onClick={handleReset} variant="ghost" size="sm">
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Reset
+                    </Button>
+                  </div>
+                  <Select value={selectedModelId} onValueChange={setSelectedModelId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customModels.map((model) => (
+                        <SelectItem key={model.modelId} value={model.modelId}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{model.description || model.modelId}</span>
+                            <span className="text-xs text-muted-foreground">{model.modelId}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </Card>
             </div>
           )}
 
