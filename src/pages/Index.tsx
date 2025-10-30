@@ -738,6 +738,38 @@ const Index = () => {
     });
   };
 
+  const handleCombinedCheck = async () => {
+    if (!pdfFile || !selectedModelId || selectedInputs.length === 0) {
+      toast({
+        title: "Missing Requirements",
+        description: "Please upload a PDF, select a model, and choose inputs to check",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Step 1: Analyze the document
+      setIsAnalyzing(true);
+      await analyzePdf();
+      
+      // Step 2: Compare with Excel data
+      setIsAnalyzing(false);
+      setIsComparing(true);
+      await comparePdfWithSelectedInputs();
+      setIsComparing(false);
+    } catch (error) {
+      console.error("Combined check error:", error);
+      setIsAnalyzing(false);
+      setIsComparing(false);
+      toast({
+        title: "Check Failed",
+        description: error instanceof Error ? error.message : "An error occurred during the check",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (!session) {
     return null; // Will redirect in useEffect
   }
@@ -830,20 +862,16 @@ const Index = () => {
           {!SHOW_AZURE_RESOURCE_DETAILS && customModels.length > 0 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <Card className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Select Model</h3>
-                  </div>
+                <div className="flex items-center gap-4">
+                  <label className="text-lg font-semibold whitespace-nowrap">Select Model</label>
                   <Select value={selectedModelId} onValueChange={setSelectedModelId}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-auto min-w-[300px] flex-1">
                       <SelectValue placeholder="Select a model" />
                     </SelectTrigger>
                     <SelectContent>
                       {customModels.map((model) => (
                         <SelectItem key={model.modelId} value={model.modelId}>
-                          <div className="flex flex-col">
-                            <span className="text-xs text-muted-foreground">{model.modelId}</span>
-                          </div>
+                          <span className="text-sm">{model.modelId}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -882,38 +910,22 @@ const Index = () => {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="p-6">
               <div className="flex flex-col sm:flex-row gap-4">
-                {/* Analyze Document Button */}
+                {/* Combined Check Button */}
                 <Button
-                  onClick={analyzePdf}
-                  disabled={!pdfFile || !selectedModelId || isAnalyzing}
+                  onClick={handleCombinedCheck}
+                  disabled={!pdfFile || !selectedModelId || selectedInputs.length === 0 || isAnalyzing || isComparing}
                   size="lg"
                   className="flex-1"
                 >
                   {isAnalyzing ? (
                     <>
                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Analyzing...
+                      Analyzing Document...
                     </>
-                  ) : (
-                    <>
-                      <FileText className="w-5 h-5 mr-2" />
-                      Analyze Document
-                    </>
-                  )}
-                </Button>
-                
-                {/* Check Button */}
-                <Button
-                  onClick={comparePdfWithSelectedInputs}
-                  disabled={!pdfFile || !selectedModelId || selectedInputs.length === 0 || isComparing}
-                  size="lg"
-                  className="flex-1"
-                  variant="default"
-                >
-                  {isComparing ? (
+                  ) : isComparing ? (
                     <>
                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Checking...
+                      Checking Results...
                     </>
                   ) : (
                     <>
