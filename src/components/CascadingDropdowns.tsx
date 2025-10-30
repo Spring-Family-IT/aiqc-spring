@@ -3,6 +3,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -24,6 +26,7 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange, onPrimar
   const [checkedColumns, setCheckedColumns] = useState<{ [key: string]: boolean }>({});
   const [checkAll, setCheckAll] = useState(false);
   const [isPrimaryKeysComplete, setIsPrimaryKeysComplete] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const { toast } = useToast();
   
   const PRIMARY_KEYS = ['Communication no.', 'Name of Dependency', 'Description'];
@@ -487,7 +490,21 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange, onPrimar
 
   return (
     <Card className="p-6">
-      <h2 className="text-2xl font-semibold mb-4">Data extracted from SAP/Excel File.</h2>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex items-center justify-between mb-4">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="flex items-center gap-2 p-0 hover:bg-transparent">
+              <h2 className="text-2xl font-semibold">Data extracted from SAP/Excel File.</h2>
+              <ChevronDown 
+                className={`w-6 h-6 transition-transform duration-200 ${
+                  isOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent>
 
       {/* Check All Checkbox */}
       {columns.length > 0 && (
@@ -582,7 +599,8 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange, onPrimar
       )}
 
       {/* Selected Inputs for Function - HIDDEN */}
-
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 };

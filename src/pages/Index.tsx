@@ -43,7 +43,6 @@ const Index = () => {
   const [backendVersionsOutdated, setBackendVersionsOutdated] = useState<boolean>(false);
   const [backendVersionsChecked, setBackendVersionsChecked] = useState<boolean>(false);
   const modelsLoadedRef = useRef(false);
-  const [isDataExtractedOpen, setIsDataExtractedOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -951,18 +950,8 @@ const Index = () => {
             </Card>
           </div>
 
-          {/* Cascading Dropdowns Section */}
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <CascadingDropdowns 
-              excelFile={excelFile}
-              onSelectedInputsChange={handleSelectedInputsChange}
-              onPrimaryKeyChange={handlePrimaryKeyChange}
-            />
-          </div>
-
-
           {/* Comparison Results */}
-          {comparisonResults && (
+          {comparisonResults && comparisonResults.length > 0 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <ComparisonResults 
                 results={comparisonResults}
@@ -971,45 +960,41 @@ const Index = () => {
             </div>
           )}
 
-          {/* Data Extracted Section - Collapsible */}
-          {analysisResults && (
+          {/* Cascading Dropdowns Section - At the end */}
+          {excelFile && excelData.length > 0 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <Card className="p-6">
-                <Collapsible 
-                  open={isDataExtractedOpen} 
-                  onOpenChange={setIsDataExtractedOpen}
-                >
-                  <div className="flex justify-between items-center mb-4">
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="flex items-center gap-2 p-0 hover:bg-transparent">
-                        <h3 className="text-lg font-semibold">Data Extracted</h3>
-                        <ChevronDown 
-                          className={`w-5 h-5 transition-transform duration-200 ${
-                            isDataExtractedOpen ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <Button onClick={downloadAnalysisCSV} variant="outline" size="sm">
-                      <Download className="w-4 h-4 mr-2" />
-                      Download CSV
-                    </Button>
-                  </div>
-                  
-                  <CollapsibleContent>
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {Object.entries(analysisResults.fields || {}).map(([key, value]: [string, any]) => (
-                        <div key={key} className="flex justify-between items-start p-3 bg-muted/50 rounded">
-                          <span className="font-medium text-sm">{key}:</span>
-                          <span className="text-sm text-muted-foreground ml-4">{String(value)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </Card>
+              <CascadingDropdowns 
+                excelFile={excelFile}
+                onSelectedInputsChange={handleSelectedInputsChange}
+                onPrimaryKeyChange={handlePrimaryKeyChange}
+              />
             </div>
           )}
+
+          {/* Analysis Results */}
+          {/*
+          analysisResults && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-card rounded-lg border p-6 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">PDF Analysis Results</h3>
+                  <Button onClick={downloadAnalysisCSV} variant="outline" size="sm">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download CSV
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {Object.entries(analysisResults.fields || {}).map(([key, value]: [string, any]) => (
+                    <div key={key} className="flex justify-between items-start p-3 bg-muted/50 rounded">
+                      <span className="font-medium text-sm">{key}:</span>
+                      <span className="text-sm text-muted-foreground ml-4">{String(value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+                  )*/
+                  }
 
         </div>
       </div>
