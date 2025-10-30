@@ -958,7 +958,8 @@ const Index = () => {
           )}
 
           {/* Analysis Results */}
-          {analysisResults && (
+          {/*
+          analysisResults && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="bg-card rounded-lg border p-6 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
@@ -978,7 +979,8 @@ const Index = () => {
                 </div>
               </div>
             </div>
-          )}
+                  )*/
+                  }
 
         </div>
       </div>
