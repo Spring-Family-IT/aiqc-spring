@@ -192,18 +192,20 @@ export default function CascadingDropdowns({
     processFile();
   }, [excelFile, toast]);
 
-  // Auto-populate based on PDF filename
+  // Reset dropdowns whenever PDF changes (even for invalid filenames)
   useEffect(() => {
-    if (!autoPopulateTrigger || !excelData.length || !columns.length) {
-      return;
-    }
-
-    // Reset dropdowns first when new PDF is uploaded
     setSelectedValues({});
     setCheckedColumns({});
     setCheckAll(false);
     setIsPrimaryKeysComplete(false);
     setIsOpen(true);
+  }, [autoPopulateTrigger]);
+
+  // Auto-populate based on PDF filename
+  useEffect(() => {
+    if (!autoPopulateTrigger || !excelData.length || !columns.length) {
+      return;
+    }
 
     const { sku, version, descriptionType } = autoPopulateTrigger;
     
