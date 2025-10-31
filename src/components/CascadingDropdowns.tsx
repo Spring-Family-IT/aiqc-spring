@@ -198,6 +198,13 @@ export default function CascadingDropdowns({
       return;
     }
 
+    // Reset dropdowns first when new PDF is uploaded
+    setSelectedValues({});
+    setCheckedColumns({});
+    setCheckAll(false);
+    setIsPrimaryKeysComplete(false);
+    setIsOpen(true);
+
     const { sku, version, descriptionType } = autoPopulateTrigger;
     
     // Find matching row in Excel data
@@ -265,13 +272,7 @@ export default function CascadingDropdowns({
         description: `SKU: ${sku}, Version: ${version}, Type: ${descriptionType}. All fields populated.`,
       });
     } else {
-      // No match found - keep section open and reset everything
-      setIsOpen(true);
-      setSelectedValues({});
-      setCheckedColumns({});
-      setCheckAll(false);
-      setIsPrimaryKeysComplete(false);
-      
+      // No match found - section already open and reset above
       toast({
         title: "Manual selection required",
         description: "Could not auto-populate from filename. Please select manually.",
