@@ -13,13 +13,25 @@ interface ExcelData {
   [key: string]: string | number | null;
 }
 
+interface ParsedPdfFilename {
+  sku: string;
+  version: string;
+  descriptionType: 'MA-BOX' | 'SEMI';
+}
+
 interface CascadingDropdownsProps {
   excelFile?: File | null;
   onSelectedInputsChange?: (inputs: { column: string; value: string }[]) => void;
   onPrimaryKeyChange?: () => void;
+  autoPopulateTrigger?: ParsedPdfFilename | null;
 }
 
-export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange, onPrimaryKeyChange }: CascadingDropdownsProps) => {
+export default function CascadingDropdowns({
+  excelFile,
+  onSelectedInputsChange,
+  onPrimaryKeyChange,
+  autoPopulateTrigger,
+}: CascadingDropdownsProps) {
   const [excelData, setExcelData] = useState<ExcelData[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [selectedValues, setSelectedValues] = useState<{ [key: string]: string }>({});
@@ -179,6 +191,58 @@ export const CascadingDropdowns = ({ excelFile, onSelectedInputsChange, onPrimar
 
     processFile();
   }, [excelFile, toast]);
+
+  // Auto-populate based on PDF filename
+  useEffect(() => {
+    if (!autoPopulateTrigger || !excelData.length || !columns.length) {
+      return;
+    }
+
+    const { sku, version, descriptionType } = autoPopulateTrigger;
+    
+    // Find matching row in Excel data
+    const matchingRow = excelData.find(row => {
+      const rowSku = String(row['Communication no.'] || '').trim();
+      const rowVersion = String(row['Name of Dependency'] || '').trim();
+      const rowDescription = String(row['Description'] || '').trim().toUpperCase();
+      
+      return (
+        rowSku === sku &&
+        rowVersion === version &&
+        rowDescription.includes(descriptionType)
+      );
+    });
+
+    if (matchingRow) {
+      // Build primary key selections
+      const primaryKeySelections: { [key: string]: string } = {
+        'Communication no.': sku,
+        'Name of Dependency': version,
+        'Description': String(matchingRow['Description'] || '').trim()
+      };
+      
+      // Auto-populate all fields
+      autoPopulateFields(primaryKeySelections);
+      
+      // Collapse the section
+      setIsOpen(false);
+      
+      toast({
+        title: "Auto-populated from filename",
+        description: `SKU: ${sku}, Version: ${version}, Type: ${descriptionType}`,
+      });
+    } else {
+      // No match found - keep section open
+      setIsOpen(true);
+      
+      toast({
+        title: "Manual selection required",
+        description: "Could not auto-populate from filename. Please select manually.",
+        variant: "default"
+      });
+    }
+  }, [autoPopulateTrigger, excelData, columns, toast]);
+
 
   const getFilteredOptions = (columnIndex: number): string[] => {
     const column = columns[columnIndex];

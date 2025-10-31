@@ -5,7 +5,7 @@ import { FileUpload } from "@/components/FileUpload";
 import { ModelsList } from "@/components/ModelsList";
 import { ResourceDetails } from "@/components/ResourceDetails";
 import { ProjectsList } from "@/components/ProjectsList";
-import { CascadingDropdowns } from "@/components/CascadingDropdowns";
+import CascadingDropdowns from "@/components/CascadingDropdowns";
 import { ComparisonResults } from "@/components/ComparisonResults";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { getFieldMapping } from "@/config/fieldMappings";
 import { normalizeBarcodeFields } from "@/lib/barcodeNormalizer";
 import { ExpectedEdgeVersions, FunctionName } from "@/config/edgeVersions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { parsePdfFilename, ParsedPdfFilename } from "@/lib/pdfFilenameParser";
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -42,6 +43,7 @@ const Index = () => {
   const [customCount, setCustomCount] = useState<number>(0);
   const [backendVersionsOutdated, setBackendVersionsOutdated] = useState<boolean>(false);
   const [backendVersionsChecked, setBackendVersionsChecked] = useState<boolean>(false);
+  const [parsedPdfFilename, setParsedPdfFilename] = useState<ParsedPdfFilename | null>(null);
   const modelsLoadedRef = useRef(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -141,6 +143,17 @@ const Index = () => {
     setPdfFile(file);
     setAnalysisResults(null);
     setComparisonResults(null);
+    
+    // Parse PDF filename for auto-population
+    const parsed = parsePdfFilename(file.name);
+    setParsedPdfFilename(parsed);
+    
+    if (parsed) {
+      toast({
+        title: "Filename parsed",
+        description: `Detected: ${parsed.sku} / ${parsed.version} / ${parsed.descriptionType}`,
+      });
+    }
   };
 
   const handleExcelFileSelect = async (file: File) => {
@@ -717,6 +730,7 @@ const Index = () => {
     setComparisonResults(null);
     setExcelData([]);
     setSelectedInputs([]);
+    setParsedPdfFilename(null);
     
     // Reset model selection
     setSelectedModelId("");
@@ -967,6 +981,7 @@ const Index = () => {
                 excelFile={excelFile}
                 onSelectedInputsChange={handleSelectedInputsChange}
                 onPrimaryKeyChange={handlePrimaryKeyChange}
+                autoPopulateTrigger={parsedPdfFilename}
               />
             </div>
           )}
