@@ -235,6 +235,9 @@ export default function CascadingDropdowns({
       // Set all values at once
       setSelectedValues(allPopulated);
       
+      // Mark primary keys as complete
+      setIsPrimaryKeysComplete(true);
+      
       // Auto-check all populated fields for comparison
       const newCheckedColumns: { [key: string]: boolean } = {};
       const allInputs: { column: string; value: string }[] = [];
@@ -262,8 +265,11 @@ export default function CascadingDropdowns({
         description: `SKU: ${sku}, Version: ${version}, Type: ${descriptionType}. All fields populated.`,
       });
     } else {
-      // No match found - keep section open
+      // No match found - keep section open and reset checkboxes
       setIsOpen(true);
+      setCheckedColumns({});
+      setCheckAll(false);
+      setIsPrimaryKeysComplete(false);
       
       toast({
         title: "Manual selection required",
