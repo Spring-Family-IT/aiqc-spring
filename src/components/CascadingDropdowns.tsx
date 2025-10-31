@@ -214,22 +214,52 @@ export default function CascadingDropdowns({
     });
 
     if (matchingRow) {
-      // Build primary key selections
-      const primaryKeySelections: { [key: string]: string } = {
-        'Communication no.': sku,
-        'Name of Dependency': version,
-        'Description': String(matchingRow['Description'] || '').trim()
-      };
+      // Build all selections directly from the matching row
+      const allPopulated: { [key: string]: string } = {};
       
-      // Auto-populate all fields
-      autoPopulateFields(primaryKeySelections);
+      // Add primary keys
+      allPopulated['Communication no.'] = sku;
+      allPopulated['Name of Dependency'] = version;
+      allPopulated['Description'] = String(matchingRow['Description'] || '').trim();
+      
+      // Add all other fields from the matching row
+      columns.forEach(col => {
+        if (!PRIMARY_KEYS.includes(col)) {
+          const value = matchingRow[col];
+          if (value !== null && value !== undefined && String(value).trim() !== '') {
+            allPopulated[col] = String(value);
+          }
+        }
+      });
+      
+      // Set all values at once
+      setSelectedValues(allPopulated);
+      
+      // Auto-check all populated fields for comparison
+      const newCheckedColumns: { [key: string]: boolean } = {};
+      const allInputs: { column: string; value: string }[] = [];
+      
+      columns.forEach(col => {
+        const value = matchingRow[col];
+        if (value !== null && value !== undefined && String(value).trim() !== '') {
+          newCheckedColumns[col] = true;
+          allInputs.push({
+            column: col,
+            value: normalizeValue(col, String(value))
+          });
+        }
+      });
+      
+      setCheckedColumns(newCheckedColumns);
+      setCheckAll(true);
+      onSelectedInputsChange?.(allInputs);
       
       // Collapse the section
       setIsOpen(false);
       
       toast({
         title: "Auto-populated from filename",
-        description: `SKU: ${sku}, Version: ${version}, Type: ${descriptionType}`,
+        description: `SKU: ${sku}, Version: ${version}, Type: ${descriptionType}. All fields populated.`,
       });
     } else {
       // No match found - keep section open
