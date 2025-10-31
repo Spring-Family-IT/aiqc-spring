@@ -200,7 +200,7 @@ export const ComparisonResults = ({ results, onDownloadReport }: ComparisonResul
             </Button>
             <Button onClick={onDownloadReport} variant="outline" size="sm">
               <Download className="w-4 h-4 mr-2" />
-              Save
+              Save Excel
             </Button>
           </div>
         </div>
