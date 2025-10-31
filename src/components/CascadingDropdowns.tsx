@@ -265,8 +265,9 @@ export default function CascadingDropdowns({
         description: `SKU: ${sku}, Version: ${version}, Type: ${descriptionType}. All fields populated.`,
       });
     } else {
-      // No match found - keep section open and reset checkboxes
+      // No match found - keep section open and reset everything
       setIsOpen(true);
+      setSelectedValues({});
       setCheckedColumns({});
       setCheckAll(false);
       setIsPrimaryKeysComplete(false);
