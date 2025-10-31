@@ -1,7 +1,9 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, AlertCircle, Download } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, Download, FileText } from "lucide-react";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -50,6 +52,77 @@ export const ComparisonResults = ({ results, onDownloadReport }: ComparisonResul
   const matchPercentage = results.length > 0 
     ? Math.round((correctCount / results.length) * 100) 
     : 0;
+
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF('l', 'mm', 'a4'); // landscape, millimeters, A4 size
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text('Field Comparison Report', 14, 20);
+    
+    // Add summary stats
+    doc.setFontSize(12);
+    doc.text(`Total Fields: ${results.length}`, 14, 30);
+    doc.text(`Matched: ${correctCount}`, 60, 30);
+    doc.text(`Mismatched: ${incorrectCount}`, 106, 30);
+    doc.text(`Not Found: ${notFoundCount}`, 152, 30);
+    doc.text(`Match Rate: ${matchPercentage}%`, 198, 30);
+    
+    // Filter results to show only mismatched and not-found
+    const filteredResults = results.filter(
+      r => r.status === 'incorrect' || r.status === 'not-found'
+    );
+    
+    // Prepare table data
+    const tableData = filteredResults.map(result => [
+      getDisplayName(result.field),
+      result.excelValue,
+      result.pdfValue + (result.matchDetails ? `\n${result.matchDetails}` : ''),
+      result.status === 'incorrect' ? 'MISMATCHED' : 'NOT FOUND'
+    ]);
+    
+    // Generate table
+    autoTable(doc, {
+      head: [['Field Name', 'SAP Data (from Excel file)', 'Info from Pack', 'Comparison']],
+      body: tableData,
+      startY: 40,
+      theme: 'grid',
+      styles: { 
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [71, 85, 105], // slate-600
+        textColor: 255,
+        fontStyle: 'bold',
+        halign: 'left'
+      },
+      columnStyles: {
+        0: { cellWidth: 50 }, // Field Name
+        1: { cellWidth: 70 }, // SAP Data
+        2: { cellWidth: 70 }, // Info from Pack
+        3: { cellWidth: 45 }, // Comparison
+      },
+      didDrawCell: (data) => {
+        // Color code the comparison column
+        if (data.column.index === 3 && data.section === 'body') {
+          const status = filteredResults[data.row.index].status;
+          if (status === 'incorrect') {
+            doc.setFillColor(254, 226, 226); // red background
+          } else if (status === 'not-found') {
+            doc.setFillColor(254, 243, 199); // yellow background
+          }
+        }
+      }
+    });
+    
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const filename = `comparison-report-${timestamp}.pdf`;
+    
+    // Download the PDF
+    doc.save(filename);
+  };
 
   return (
     <div className="space-y-6">
@@ -121,10 +194,16 @@ export const ComparisonResults = ({ results, onDownloadReport }: ComparisonResul
       <Card className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Field Comparison Report</h3>
-          <Button onClick={onDownloadReport} variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Save
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleDownloadPDF} variant="outline" size="sm">
+              <FileText className="w-4 h-4 mr-2" />
+              Save PDF
+            </Button>
+            <Button onClick={onDownloadReport} variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Save
+            </Button>
+          </div>
         </div>
         
         {/* Fixed Header Table */}
@@ -146,44 +225,56 @@ export const ComparisonResults = ({ results, onDownloadReport }: ComparisonResul
           <ScrollArea className="h-[500px]">
             <Table className="table-fixed">
               <TableBody>
-                {results.map((result, index) => {
-                  const statusBadge = 
-                    result.status === 'correct' ? (
-                      <Badge variant="default" className="bg-success text-success-foreground">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        MATCHED
-                      </Badge>
-                    ) : result.status === 'incorrect' ? (
-                      <Badge variant="destructive">
-                        <XCircle className="w-3 h-3 mr-1" />
-                        MISMATCHED
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="bg-warning text-warning-foreground">
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        NOT FOUND
-                      </Badge>
-                    );
+                {results
+                  .filter(result => result.status === 'incorrect' || result.status === 'not-found')
+                  .map((result, index) => {
+                    const statusBadge = 
+                      result.status === 'correct' ? (
+                        <Badge variant="default" className="bg-success text-success-foreground">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          MATCHED
+                        </Badge>
+                      ) : result.status === 'incorrect' ? (
+                        <Badge variant="destructive">
+                          <XCircle className="w-3 h-3 mr-1" />
+                          MISMATCHED
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-warning text-warning-foreground">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          NOT FOUND
+                        </Badge>
+                      );
 
-                  const rowClass = 
-                    result.status === 'correct' ? 'bg-success/5' :
-                    result.status === 'incorrect' ? 'bg-destructive/5' :
-                    'bg-warning/5';
-                    
-                  return (
-                    <TableRow key={index} className={rowClass}>
-                      <TableCell className="w-[20%] font-medium border-r">{getDisplayName(result.field)}</TableCell>
-                      <TableCell className="w-[30%] font-mono text-sm border-r">{result.excelValue}</TableCell>
-                      <TableCell className="w-[30%] font-mono text-sm border-r">
-                        {result.pdfValue}
-                        {result.matchDetails && (
-                          <p className="text-xs text-muted-foreground mt-1 italic">{result.matchDetails}</p>
-                        )}
-                      </TableCell>
-                      <TableCell className="w-[20%]">{statusBadge}</TableCell>
-                    </TableRow>
-                  );
-                })}
+                    const rowClass = 
+                      result.status === 'correct' ? 'bg-success/5' :
+                      result.status === 'incorrect' ? 'bg-destructive/5' :
+                      'bg-warning/5';
+                      
+                    return (
+                      <TableRow key={index} className={rowClass}>
+                        <TableCell className="w-[20%] font-medium border-r">{getDisplayName(result.field)}</TableCell>
+                        <TableCell className="w-[30%] font-mono text-sm border-r">{result.excelValue}</TableCell>
+                        <TableCell className="w-[30%] font-mono text-sm border-r">
+                          {result.pdfValue}
+                          {result.matchDetails && (
+                            <p className="text-xs text-muted-foreground mt-1 italic">{result.matchDetails}</p>
+                          )}
+                        </TableCell>
+                        <TableCell className="w-[20%]">{statusBadge}</TableCell>
+                      </TableRow>
+                    );
+                  })
+                }
+                {results.filter(r => r.status === 'incorrect' || r.status === 'not-found').length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8">
+                      <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-success" />
+                      <p className="text-lg font-medium">All fields matched!</p>
+                      <p className="text-sm text-muted-foreground">No mismatches or missing data found.</p>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </ScrollArea>
