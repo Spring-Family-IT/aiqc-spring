@@ -56,36 +56,29 @@ export const ComparisonResults = ({ results, onDownloadReport }: ComparisonResul
   const handleDownloadPDF = () => {
     const doc = new jsPDF('l', 'mm', 'a4'); // landscape, millimeters, A4 size
     
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Field Comparison Report', 14, 20);
+    // Use ALL results for PDF (no filtering)
+    const allResults = results;
     
-    // Add summary stats
-    doc.setFontSize(12);
-    doc.text(`Total Fields: ${results.length}`, 14, 30);
-    doc.text(`Matched: ${correctCount}`, 60, 30);
-    doc.text(`Mismatched: ${incorrectCount}`, 106, 30);
-    doc.text(`Not Found: ${notFoundCount}`, 152, 30);
-    doc.text(`Match Rate: ${matchPercentage}%`, 198, 30);
+    // Prepare table data with all three status types
+    const tableData = allResults.map(result => {
+      let statusText = '';
+      if (result.status === 'correct') statusText = 'MATCHED';
+      else if (result.status === 'incorrect') statusText = 'MISMATCHED';
+      else statusText = 'NOT FOUND';
+      
+      return [
+        getDisplayName(result.field),
+        result.excelValue,
+        result.pdfValue + (result.matchDetails ? `\n${result.matchDetails}` : ''),
+        statusText
+      ];
+    });
     
-    // Filter results to show only mismatched and not-found
-    const filteredResults = results.filter(
-      r => r.status === 'incorrect' || r.status === 'not-found'
-    );
-    
-    // Prepare table data
-    const tableData = filteredResults.map(result => [
-      getDisplayName(result.field),
-      result.excelValue,
-      result.pdfValue + (result.matchDetails ? `\n${result.matchDetails}` : ''),
-      result.status === 'incorrect' ? 'MISMATCHED' : 'NOT FOUND'
-    ]);
-    
-    // Generate table
+    // Generate table with color-coded text
     autoTable(doc, {
       head: [['Field Name', 'SAP Data (from Excel file)', 'Info from Pack', 'Comparison']],
       body: tableData,
-      startY: 40,
+      startY: 20,
       theme: 'grid',
       styles: { 
         fontSize: 9,
@@ -101,16 +94,22 @@ export const ComparisonResults = ({ results, onDownloadReport }: ComparisonResul
         0: { cellWidth: 50 }, // Field Name
         1: { cellWidth: 70 }, // SAP Data
         2: { cellWidth: 70 }, // Info from Pack
-        3: { cellWidth: 45 }, // Comparison
+        3: { 
+          cellWidth: 45,
+          halign: 'center',
+          fontStyle: 'bold'
+        }, // Comparison
       },
-      didDrawCell: (data) => {
-        // Color code the comparison column
+      didParseCell: (data) => {
+        // Color code the Comparison column text to match web version
         if (data.column.index === 3 && data.section === 'body') {
-          const status = filteredResults[data.row.index].status;
-          if (status === 'incorrect') {
-            doc.setFillColor(254, 226, 226); // red background
+          const status = allResults[data.row.index].status;
+          if (status === 'correct') {
+            data.cell.styles.textColor = [22, 163, 74]; // Green for MATCHED
+          } else if (status === 'incorrect') {
+            data.cell.styles.textColor = [220, 38, 38]; // Red for MISMATCHED
           } else if (status === 'not-found') {
-            doc.setFillColor(254, 243, 199); // yellow background
+            data.cell.styles.textColor = [245, 158, 11]; // Yellow/Amber for NOT FOUND
           }
         }
       }
