@@ -786,6 +786,9 @@ const Index = () => {
 
     setIsBatchProcessing(true);
     const results: any[] = [];
+    
+    // Helper function to delay between requests
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     for (let i = 0; i < pdfFiles.length; i++) {
       const pdfFile = pdfFiles[i];
@@ -847,6 +850,21 @@ const Index = () => {
           title: `Processed ${i + 1}/${pdfFiles.length}`,
           description: `Completed: ${pdfFile.name}`,
         });
+        
+        // Add delay between PDFs to avoid rate limiting (except for the last file)
+        if (i < pdfFiles.length - 1) {
+          toast({
+            title: "Waiting for rate limit...",
+            description: `Pausing 30 seconds before processing next PDF (${i + 2}/${pdfFiles.length})`,
+          });
+          
+          await delay(30000); // 30 seconds
+          
+          toast({
+            title: "Resuming processing",
+            description: `Starting: ${pdfFiles[i + 1]?.name}`,
+          });
+        }
         
       } catch (error) {
         console.error(`Error processing ${pdfFile.name}:`, error);
