@@ -789,6 +789,38 @@ const Index = () => {
     
     // Helper function to delay between requests
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    // Retry logic for network errors
+    const retryWithDelay = async (fn: () => Promise<any>, retries = 2, delayMs = 10000) => {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          return await fn();
+        } catch (error) {
+          const isNetworkError = 
+            error instanceof Error && 
+            (error.message.includes('Failed to fetch') ||
+             error.message.includes('Network connection lost') ||
+             error.message.includes('network') ||
+             error.name === 'FunctionsFetchError' ||
+             error.name === 'FunctionsHttpError');
+          
+          const isLastAttempt = attempt === retries;
+          
+          if (isNetworkError && !isLastAttempt) {
+            console.log(`Network error on attempt ${attempt + 1}, retrying in ${delayMs/1000}s...`);
+            toast({
+              title: "Network issue detected",
+              description: `Retrying in ${delayMs/1000} seconds... (Attempt ${attempt + 2}/${retries + 1})`,
+              variant: "default",
+            });
+            await delay(delayMs);
+            continue;
+          }
+          
+          throw error; // Re-throw if not network error or last attempt
+        }
+      }
+    };
 
     for (let i = 0; i < pdfFiles.length; i++) {
       const pdfFile = pdfFiles[i];
@@ -830,9 +862,11 @@ const Index = () => {
         formData.append('selectedInputs', JSON.stringify(currentSelectedInputs));
         formData.append('modelId', selectedModelId);
 
-        const { data, error } = await supabase.functions.invoke('compare-documents', {
-          body: formData,
-        });
+        const { data, error } = await retryWithDelay(async () => {
+          return await supabase.functions.invoke('compare-documents', {
+            body: formData,
+          });
+        }, 2, 10000);
 
         if (error) throw error;
 
@@ -868,13 +902,43 @@ const Index = () => {
         
       } catch (error) {
         console.error(`Error processing ${pdfFile.name}:`, error);
+        
+        // Determine error type for better user feedback
+        let errorMessage = 'Unknown error';
+        let errorType = 'error';
+        
+        if (error instanceof Error) {
+          errorMessage = error.message;
+          
+          // Categorize error types
+          if (error.message.includes('Failed to fetch') || 
+              error.message.includes('Network connection lost')) {
+            errorType = 'network';
+            errorMessage = 'Network connection lost. Please check your internet connection.';
+          } else if (error.message.includes('429') || 
+                     error.message.includes('rate limit')) {
+            errorType = 'rate_limit';
+            errorMessage = 'API rate limit exceeded. Try again later.';
+          } else if (error.message.includes('500')) {
+            errorType = 'server';
+            errorMessage = 'Server error occurred. The service may be temporarily unavailable.';
+          }
+        }
+        
+        toast({
+          title: `Failed to process ${pdfFile.name}`,
+          description: errorMessage,
+          variant: "destructive",
+        });
+        
         results.push({
           filename: pdfFile.name,
           comparisonResults: [],
           analysisResults: null,
           selectedInputs: [],
           parsedFilename: parsedPdfFilenames[i],
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: errorMessage,
+          errorType: errorType
         });
       }
     }

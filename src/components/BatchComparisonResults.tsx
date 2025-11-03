@@ -3,7 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ComparisonResults } from "@/components/ComparisonResults";
-import { CheckCircle2, XCircle, FileText, Download, GitCompare } from "lucide-react";
+import { CheckCircle2, XCircle, FileText, Download, GitCompare, WifiOff, Clock, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ParsedPdfFilename } from "@/lib/pdfFilenameParser";
 
 interface BatchResultData {
@@ -14,6 +15,7 @@ interface BatchResultData {
   parsedFilename: ParsedPdfFilename | null;
   summary?: any;
   error?: string;
+  errorType?: string;
 }
 
 interface BatchComparisonResultsProps {
@@ -116,7 +118,15 @@ export const BatchComparisonResults = ({
               >
                 <FileText className="w-4 h-4 mr-2" />
                 {result.filename}
-                {result.error && <XCircle className="w-4 h-4 ml-2 text-destructive" />}
+                {result.error && (
+                  result.errorType === 'network' ? (
+                    <WifiOff className="w-4 h-4 ml-2 text-destructive" />
+                  ) : result.errorType === 'rate_limit' ? (
+                    <Clock className="w-4 h-4 ml-2 text-amber-500" />
+                  ) : (
+                    <XCircle className="w-4 h-4 ml-2 text-destructive" />
+                  )
+                )}
               </Button>
             ))}
           </div>
@@ -139,17 +149,23 @@ export const BatchComparisonResults = ({
       {batchResults[selectedResultIndex] && (
         <div>
           {batchResults[selectedResultIndex].error ? (
-            <Card className="p-6 bg-destructive/5">
-              <div className="flex items-center gap-3">
-                <XCircle className="w-6 h-6 text-destructive" />
-                <div>
-                  <h3 className="text-lg font-semibold">Processing Failed</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {batchResults[selectedResultIndex].error}
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Processing Failed</AlertTitle>
+              <AlertDescription>
+                {batchResults[selectedResultIndex].error}
+                {batchResults[selectedResultIndex].errorType === 'network' && (
+                  <p className="mt-2 text-sm">
+                    This was a network connectivity issue. You can try processing this file again.
                   </p>
-                </div>
-              </div>
-            </Card>
+                )}
+                {batchResults[selectedResultIndex].errorType === 'rate_limit' && (
+                  <p className="mt-2 text-sm">
+                    The API rate limit was exceeded. Please wait 30 seconds before trying again.
+                  </p>
+                )}
+              </AlertDescription>
+            </Alert>
           ) : (
             <ComparisonResults
               results={batchResults[selectedResultIndex].comparisonResults}
