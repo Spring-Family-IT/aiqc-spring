@@ -24,6 +24,7 @@ import { ExpectedEdgeVersions, FunctionName } from "@/config/edgeVersions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { parsePdfFilename, ParsedPdfFilename } from "@/lib/pdfFilenameParser";
+import { processBatchPdfComparison as runBatchComparison } from "@/pages/IndexBatchLogic";
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -774,184 +775,7 @@ const Index = () => {
     });
   };
 
-  const processBatchPdfComparison = async () => {
-    if (pdfFiles.length === 0 || !selectedModelId || excelData.length === 0) {
-      toast({
-        title: "Missing Requirements",
-        description: "Please upload PDFs, Excel data, and select a model",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsBatchProcessing(true);
-    const results: any[] = [];
-    
-    // Helper function to delay between requests
-    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-    
-    // Retry logic for network errors
-    const retryWithDelay = async (fn: () => Promise<any>, retries = 2, delayMs = 10000) => {
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-          return await fn();
-        } catch (error) {
-          const isNetworkError = 
-            error instanceof Error && 
-            (error.message.includes('Failed to fetch') ||
-             error.message.includes('Network connection lost') ||
-             error.message.includes('network') ||
-             error.name === 'FunctionsFetchError' ||
-             error.name === 'FunctionsHttpError');
-          
-          const isLastAttempt = attempt === retries;
-          
-          if (isNetworkError && !isLastAttempt) {
-            console.log(`Network error on attempt ${attempt + 1}, retrying in ${delayMs/1000}s...`);
-            toast({
-              title: "Network issue detected",
-              description: `Retrying in ${delayMs/1000} seconds... (Attempt ${attempt + 2}/${retries + 1})`,
-              variant: "default",
-            });
-            await delay(delayMs);
-            continue;
-          }
-          
-          throw error; // Re-throw if not network error or last attempt
-        }
-      }
-    };
-
-    for (let i = 0; i < pdfFiles.length; i++) {
-      const pdfFile = pdfFiles[i];
-      setCurrentProcessingIndex(i);
-      
-      try {
-        // 1. Auto-populate from filename
-        const parsedFilename = parsedPdfFilenames[i];
-        let currentSelectedInputs: any[] = [];
-        
-        if (parsedFilename && excelData.length > 0) {
-          const { sku, version, descriptionType } = parsedFilename;
-          const matchingRow = excelData.find(row => {
-            const rowSku = String(row['Communication no.'] || '').trim();
-            const rowVersion = String(row['Name of Dependency'] || '').trim();
-            const rowDescription = String(row['Description'] || '').trim().toUpperCase();
-            
-            return rowSku === sku && 
-                   rowVersion === version && 
-                   rowDescription === descriptionType;
-          });
-          
-          if (matchingRow) {
-            // Build selected inputs from matching row
-            const fieldMappingConfig = getFieldMapping(selectedModelId);
-            const fieldMapping = fieldMappingConfig.mappings;
-            currentSelectedInputs = Object.entries(fieldMapping)
-              .filter(([excelCol]) => matchingRow[excelCol])
-              .map(([excelCol]) => ({
-                column: excelCol,
-                value: String(matchingRow[excelCol])
-              }));
-          }
-        }
-        
-        // 2. Compare PDF with inputs
-        const formData = new FormData();
-        formData.append('pdf', pdfFile);
-        formData.append('selectedInputs', JSON.stringify(currentSelectedInputs));
-        formData.append('modelId', selectedModelId);
-
-        const { data, error } = await retryWithDelay(async () => {
-          return await supabase.functions.invoke('compare-documents', {
-            body: formData,
-          });
-        }, 2, 10000);
-
-        if (error) throw error;
-
-        // 3. Store result
-        results.push({
-          filename: pdfFile.name,
-          comparisonResults: data.results || [],
-          analysisResults: data.analysisResults || {},
-          selectedInputs: currentSelectedInputs,
-          parsedFilename: parsedFilename,
-          summary: data.summary
-        });
-        
-        toast({
-          title: `Processed ${i + 1}/${pdfFiles.length}`,
-          description: `Completed: ${pdfFile.name}`,
-        });
-        
-        // Add delay between PDFs to avoid rate limiting (except for the last file)
-        if (i < pdfFiles.length - 1) {
-          toast({
-            title: "Waiting for rate limit...",
-            description: `Pausing 30 seconds before processing next PDF (${i + 2}/${pdfFiles.length})`,
-          });
-          
-          await delay(30000); // 30 seconds
-          
-          toast({
-            title: "Resuming processing",
-            description: `Starting: ${pdfFiles[i + 1]?.name}`,
-          });
-        }
-        
-      } catch (error) {
-        console.error(`Error processing ${pdfFile.name}:`, error);
-        
-        // Determine error type for better user feedback
-        let errorMessage = 'Unknown error';
-        let errorType = 'error';
-        
-        if (error instanceof Error) {
-          errorMessage = error.message;
-          
-          // Categorize error types
-          if (error.message.includes('Failed to fetch') || 
-              error.message.includes('Network connection lost')) {
-            errorType = 'network';
-            errorMessage = 'Network connection lost. Please check your internet connection.';
-          } else if (error.message.includes('429') || 
-                     error.message.includes('rate limit')) {
-            errorType = 'rate_limit';
-            errorMessage = 'API rate limit exceeded. Try again later.';
-          } else if (error.message.includes('500')) {
-            errorType = 'server';
-            errorMessage = 'Server error occurred. The service may be temporarily unavailable.';
-          }
-        }
-        
-        toast({
-          title: `Failed to process ${pdfFile.name}`,
-          description: errorMessage,
-          variant: "destructive",
-        });
-        
-        results.push({
-          filename: pdfFile.name,
-          comparisonResults: [],
-          analysisResults: null,
-          selectedInputs: [],
-          parsedFilename: parsedPdfFilenames[i],
-          error: errorMessage,
-          errorType: errorType
-        });
-      }
-    }
-
-    setBatchResults(results);
-    setIsBatchProcessing(false);
-    setCurrentProcessingIndex(0);
-    
-    toast({
-      title: "Batch processing complete",
-      description: `Processed ${results.length} PDF files`,
-    });
-  };
+  // Removed local processBatchPdfComparison - now using shared logic from IndexBatchLogic.ts
 
   const processSinglePdf = async () => {
     if (pdfFiles.length === 0 || !selectedModelId || selectedInputs.length === 0) {
@@ -1039,7 +863,16 @@ const Index = () => {
 
   const handleCombinedCheck = async () => {
     if (pdfFiles.length > 1) {
-      await processBatchPdfComparison();
+      const results = await runBatchComparison(
+        pdfFiles,
+        parsedPdfFilenames,
+        selectedModelId,
+        excelData,
+        setCurrentProcessingIndex,
+        setIsBatchProcessing,
+        toast
+      );
+      setBatchResults(results);
     } else {
       await processSinglePdf();
     }
