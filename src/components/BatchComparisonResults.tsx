@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ComparisonResults } from "@/components/ComparisonResults";
-import { CheckCircle2, XCircle, FileText, Download, GitCompare, WifiOff, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle2, XCircle, FileText, Download, GitCompare, WifiOff, Clock, AlertCircle, Key } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ParsedPdfFilename } from "@/lib/pdfFilenameParser";
 
@@ -16,6 +16,7 @@ interface BatchResultData {
   summary?: any;
   error?: string;
   errorType?: string;
+  primaryKeyStatus?: any;
 }
 
 interface BatchComparisonResultsProps {
@@ -41,6 +42,19 @@ const calculateAverageMatchRate = (results: BatchResultData[]): number => {
   return Math.round(totalMatchRate / validResults.length);
 };
 
+const calculateCompilationStats = (results: BatchResultData[]) => {
+  return {
+    totalPdfs: results.length,
+    successful: results.filter(r => !r.error).length,
+    failed: results.filter(r => r.error).length,
+    primaryKeyFailed: results.filter(r => r.errorType === 'primary_key_failed').length,
+    networkFailed: results.filter(r => r.errorType === 'network').length,
+    totalCorrect: results.reduce((sum, r) => sum + (r.summary?.correct || 0), 0),
+    totalIncorrect: results.reduce((sum, r) => sum + (r.summary?.incorrect || 0), 0),
+    totalNotFound: results.reduce((sum, r) => sum + (r.summary?.notFound || 0), 0),
+  };
+};
+
 export const BatchComparisonResults = ({ 
   batchResults, 
   onDownloadBatchPDF,
@@ -51,9 +65,42 @@ export const BatchComparisonResults = ({
   const successfulCount = batchResults.filter(r => !r.error).length;
   const failedCount = batchResults.filter(r => r.error).length;
   const avgMatchRate = calculateAverageMatchRate(batchResults);
+  const compilationStats = calculateCompilationStats(batchResults);
 
   return (
     <div className="space-y-6">
+      {/* Compilation Statistics */}
+      <Card className="p-6 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <GitCompare className="w-5 h-5" />
+          Compilation Report
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <p className="text-muted-foreground">Total Fields</p>
+            <p className="text-xl font-bold">{compilationStats.totalCorrect + compilationStats.totalIncorrect + compilationStats.totalNotFound}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Correct</p>
+            <p className="text-xl font-bold text-success">✅ {compilationStats.totalCorrect}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Incorrect</p>
+            <p className="text-xl font-bold text-destructive">❌ {compilationStats.totalIncorrect}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Not Found</p>
+            <p className="text-xl font-bold text-amber-500">⚠️ {compilationStats.totalNotFound}</p>
+          </div>
+          {compilationStats.primaryKeyFailed > 0 && (
+            <div className="col-span-2">
+              <p className="text-muted-foreground">Primary Key Failed</p>
+              <p className="text-xl font-bold text-amber-500">🔑 {compilationStats.primaryKeyFailed} PDFs</p>
+            </div>
+          )}
+        </div>
+      </Card>
+      
       {/* Summary Cards for All Results */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-6">
@@ -119,7 +166,9 @@ export const BatchComparisonResults = ({
                 <FileText className="w-4 h-4 mr-2" />
                 {result.filename}
                 {result.error && (
-                  result.errorType === 'network' ? (
+                  result.errorType === 'primary_key_failed' ? (
+                    <Key className="w-4 h-4 ml-2 text-amber-500" />
+                  ) : result.errorType === 'network' ? (
                     <WifiOff className="w-4 h-4 ml-2 text-destructive" />
                   ) : result.errorType === 'rate_limit' ? (
                     <Clock className="w-4 h-4 ml-2 text-amber-500" />
@@ -154,6 +203,11 @@ export const BatchComparisonResults = ({
               <AlertTitle>Processing Failed</AlertTitle>
               <AlertDescription>
                 {batchResults[selectedResultIndex].error}
+                {batchResults[selectedResultIndex].errorType === 'primary_key_failed' && (
+                  <p className="mt-2 text-sm">
+                    Primary key could not be established. Please check the PDF filename format (should be: SKU_Version_Type_...) and ensure matching Excel data exists.
+                  </p>
+                )}
                 {batchResults[selectedResultIndex].errorType === 'network' && (
                   <p className="mt-2 text-sm">
                     This was a network connectivity issue. You can try processing this file again.

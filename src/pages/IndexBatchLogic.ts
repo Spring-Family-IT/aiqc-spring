@@ -29,11 +29,31 @@ export const processBatchPdfComparison = async (
     setCurrentProcessingIndex(i);
     
     try {
-      // 1. Auto-populate from filename
+      // 1. Establish primary key from filename
       const parsedFilename = parsedPdfFilenames[i];
       let currentSelectedInputs: any[] = [];
+      let primaryKeyStatus = {
+        established: false,
+        reason: '',
+        matchingRow: null as any
+      };
       
-      if (parsedFilename && excelData.length > 0) {
+      if (!parsedFilename) {
+        primaryKeyStatus.reason = 'Failed to parse PDF filename. Expected format: SKU_Version_Type_...';
+        toast({
+          title: `⚠️ Primary Key Failed: ${pdfFile.name}`,
+          description: primaryKeyStatus.reason,
+          variant: "destructive",
+        });
+      } else if (excelData.length === 0) {
+        primaryKeyStatus.reason = 'No Excel data loaded';
+        toast({
+          title: `⚠️ No Excel Data`,
+          description: 'Please upload and select Excel data first',
+          variant: "destructive",
+        });
+      } else {
+        // 2. Search for matching row in Excel
         const { sku, version, descriptionType } = parsedFilename;
         const matchingRow = excelData.find(row => {
           const rowSku = String(row['Communication no.'] || '').trim();
@@ -45,20 +65,51 @@ export const processBatchPdfComparison = async (
                  rowDescription === descriptionType;
         });
         
-        if (matchingRow) {
-          // Build selected inputs from matching row
+        if (!matchingRow) {
+          primaryKeyStatus.reason = `No Excel row found for SKU: ${sku}, Version: ${version}, Type: ${descriptionType}`;
+          toast({
+            title: `⚠️ No Match Found: ${pdfFile.name}`,
+            description: primaryKeyStatus.reason,
+            variant: "destructive",
+          });
+        } else {
+          // 3. Primary key established! Build ALL fields from mapping
+          primaryKeyStatus.established = true;
+          primaryKeyStatus.matchingRow = matchingRow;
+          
           const fieldMappingConfig = getFieldMapping(selectedModelId);
           const fieldMapping = fieldMappingConfig.mappings;
-          currentSelectedInputs = Object.entries(fieldMapping)
-            .filter(([excelCol]) => matchingRow[excelCol])
-            .map(([excelCol]) => ({
-              column: excelCol,
-              value: String(matchingRow[excelCol])
-            }));
+          
+          // Include ALL mapped fields, even if value is empty
+          currentSelectedInputs = Object.entries(fieldMapping).map(([excelCol]) => ({
+            column: excelCol,
+            value: String(matchingRow[excelCol] || '') // Use empty string if no value
+          }));
+          
+          toast({
+            title: `✅ Primary Key Established: ${pdfFile.name}`,
+            description: `Found match: ${sku} / ${version} / ${descriptionType} (${currentSelectedInputs.length} fields)`,
+          });
         }
       }
       
-      // 2. Compare PDF with inputs
+      // Only proceed with comparison if primary key was established
+      if (!primaryKeyStatus.established || currentSelectedInputs.length === 0) {
+        // Store failed result
+        results.push({
+          filename: pdfFile.name,
+          comparisonResults: [],
+          analysisResults: null,
+          selectedInputs: [],
+          parsedFilename: parsedFilename,
+          primaryKeyStatus: primaryKeyStatus,
+          error: primaryKeyStatus.reason,
+          errorType: 'primary_key_failed'
+        });
+        continue; // Skip to next PDF
+      }
+      
+      // 4. Compare PDF with inputs
       const formData = new FormData();
       formData.append('pdf', pdfFile);
       formData.append('selectedInputs', JSON.stringify(currentSelectedInputs));
@@ -70,7 +121,7 @@ export const processBatchPdfComparison = async (
 
       if (error) throw error;
 
-      // 3. Store result
+      // 5. Store result
       results.push({
         filename: pdfFile.name,
         comparisonResults: data.results || [],
@@ -80,9 +131,11 @@ export const processBatchPdfComparison = async (
         summary: data.summary
       });
       
+      // Show individual PDF report
       toast({
-        title: `Processed ${i + 1}/${pdfFiles.length}`,
-        description: `Completed: ${pdfFile.name}`,
+        title: `📄 Report Generated: ${pdfFile.name}`,
+        description: `✅ ${data.summary?.correct || 0} correct, ❌ ${data.summary?.incorrect || 0} incorrect, ⚠️ ${data.summary?.notFound || 0} not found`,
+        duration: 5000,
       });
       
     } catch (error) {
@@ -101,9 +154,19 @@ export const processBatchPdfComparison = async (
   setIsBatchProcessing(false);
   setCurrentProcessingIndex(0);
   
+  // Compile statistics
+  const totalPdfs = results.length;
+  const successfulPdfs = results.filter(r => !r.error).length;
+  const failedPdfs = results.filter(r => r.error).length;
+  const primaryKeyFailed = results.filter(r => r.errorType === 'primary_key_failed').length;
+  const totalCorrect = results.reduce((sum, r) => sum + (r.summary?.correct || 0), 0);
+  const totalIncorrect = results.reduce((sum, r) => sum + (r.summary?.incorrect || 0), 0);
+  const totalNotFound = results.reduce((sum, r) => sum + (r.summary?.notFound || 0), 0);
+  
   toast({
-    title: "Batch processing complete",
-    description: `Processed ${results.length} PDF files`,
+    title: "📊 Batch Processing Complete - Compilation Report",
+    description: `Total: ${totalPdfs} PDFs | ✅ ${successfulPdfs} successful | ❌ ${failedPdfs} failed (${primaryKeyFailed} primary key)\nFields: ${totalCorrect} correct, ${totalIncorrect} incorrect, ${totalNotFound} not found`,
+    duration: 10000,
   });
 
   return results;
