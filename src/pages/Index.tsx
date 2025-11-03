@@ -810,7 +810,8 @@ const Index = () => {
           
           if (matchingRow) {
             // Build selected inputs from matching row
-            const fieldMapping = getFieldMapping(selectedModelId);
+            const fieldMappingConfig = getFieldMapping(selectedModelId);
+            const fieldMapping = fieldMappingConfig.mappings;
             currentSelectedInputs = Object.entries(fieldMapping)
               .filter(([excelCol]) => matchingRow[excelCol])
               .map(([excelCol]) => ({
