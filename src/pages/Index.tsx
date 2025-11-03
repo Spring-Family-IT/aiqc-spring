@@ -7,6 +7,7 @@ import { ResourceDetails } from "@/components/ResourceDetails";
 import { ProjectsList } from "@/components/ProjectsList";
 import CascadingDropdowns from "@/components/CascadingDropdowns";
 import { ComparisonResults } from "@/components/ComparisonResults";
+import { BatchComparisonResults } from "@/components/BatchComparisonResults";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,21 +16,27 @@ import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompa
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Session } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { getFieldMapping } from "@/config/fieldMappings";
 import { normalizeBarcodeFields } from "@/lib/barcodeNormalizer";
 import { ExpectedEdgeVersions, FunctionName } from "@/config/edgeVersions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import { parsePdfFilename, ParsedPdfFilename } from "@/lib/pdfFilenameParser";
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isComparing, setIsComparing] = useState(false);
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+  const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number>(0);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [comparisonResults, setComparisonResults] = useState<any>(null);
+  const [batchResults, setBatchResults] = useState<any[]>([]);
   const [excelData, setExcelData] = useState<any[]>([]);
   const [selectedInputs, setSelectedInputs] = useState<{ column: string; value: string }[]>([]);
   const [models, setModels] = useState<any[]>([]);
@@ -43,7 +50,7 @@ const Index = () => {
   const [customCount, setCustomCount] = useState<number>(0);
   const [backendVersionsOutdated, setBackendVersionsOutdated] = useState<boolean>(false);
   const [backendVersionsChecked, setBackendVersionsChecked] = useState<boolean>(false);
-  const [parsedPdfFilename, setParsedPdfFilename] = useState<ParsedPdfFilename | null>(null);
+  const [parsedPdfFilenames, setParsedPdfFilenames] = useState<(ParsedPdfFilename | null)[]>([]);
   const modelsLoadedRef = useRef(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -139,20 +146,31 @@ const Index = () => {
     navigate("/auth");
   };
 
-  const handleFileSelect = (file: File) => {
-    setPdfFile(file);
+  const handleFileSelect = (files: File[]) => {
+    setPdfFiles(files);
     setAnalysisResults(null);
     setComparisonResults(null);
+    setBatchResults([]);
     
-    // Parse PDF filename for auto-population
-    const parsed = parsePdfFilename(file.name);
-    setParsedPdfFilename(parsed);
+    // Parse all PDF filenames
+    const parsed = files.map(file => parsePdfFilename(file.name));
+    setParsedPdfFilenames(parsed);
     
-    if (parsed) {
-      toast({
-        title: "Filename parsed",
-        description: `Detected: ${parsed.sku} / ${parsed.version} / ${parsed.descriptionType}`,
-      });
+    toast({
+      title: "Files selected",
+      description: `${files.length} PDF file(s) ready for processing`,
+    });
+  };
+
+  const handleRemovePdf = (index: number) => {
+    const newFiles = pdfFiles.filter((_, i) => i !== index);
+    const newParsed = parsedPdfFilenames.filter((_, i) => i !== index);
+    setPdfFiles(newFiles);
+    setParsedPdfFilenames(newParsed);
+    
+    if (newFiles.length === 0) {
+      setBatchResults([]);
+      setComparisonResults(null);
     }
   };
 
@@ -322,7 +340,7 @@ const Index = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Analysis Results");
 
     // Generate CSV file and trigger download
-    const fileName = `analysis_${pdfFile?.name.replace('.pdf', '')}_${new Date().toISOString().split('T')[0]}.csv`;
+    const fileName = `analysis_${new Date().toISOString().split('T')[0]}.csv`;
     XLSX.writeFile(workbook, fileName, { bookType: 'csv' });
 
     toast({
@@ -332,7 +350,7 @@ const Index = () => {
   };
 
   const downloadComparisonReport = () => {
-    if (!comparisonResults || !analysisResults || !session?.user?.email || !pdfFile) {
+    if (!comparisonResults || !analysisResults || !session?.user?.email || pdfFiles.length === 0) {
       toast({
         title: "Cannot generate report",
         description: "Missing required data for report generation",
@@ -340,6 +358,8 @@ const Index = () => {
       });
       return;
     }
+
+    const pdfFile = pdfFiles[0]; // Use first file for single PDF report
 
     try {
       // 1. Prepare timestamp
@@ -457,7 +477,7 @@ const Index = () => {
   };
 
   const comparePdfWithSelectedInputs = async () => {
-    if (!pdfFile || !selectedModelId || selectedInputs.length === 0) {
+    if (pdfFiles.length === 0 || !selectedModelId || selectedInputs.length === 0) {
       toast({
         title: "Missing Requirements",
         description: "Please upload a PDF, select a model, and check at least one field",
@@ -470,7 +490,7 @@ const Index = () => {
     
     try {
       const formData = new FormData();
-      formData.append('pdf', pdfFile);
+      formData.append('pdf', pdfFiles[0]); // Use first file for single comparison
       formData.append('selectedInputs', JSON.stringify(selectedInputs));
       formData.append('modelId', selectedModelId);
 
@@ -501,7 +521,7 @@ const Index = () => {
   };
 
   const analyzePdf = async () => {
-    if (!pdfFile) {
+    if (pdfFiles.length === 0) {
       toast({
         title: "Missing PDF file",
         description: "Please upload a PDF file first",
@@ -525,7 +545,7 @@ const Index = () => {
     try {
       // Create FormData to send PDF to edge function
       const formData = new FormData();
-      formData.append('pdf', pdfFile);
+      formData.append('pdf', pdfFiles[0]); // Use first PDF for single analysis
       formData.append('modelId', selectedModelId);
 
       // Call Azure Document Intelligence via edge function
@@ -722,15 +742,16 @@ const Index = () => {
 
   const handleReset = async () => {
     // Clear all file selections
-    setPdfFile(null);
+    setPdfFiles([]);
     setExcelFile(null);
     
     // Clear all results and data
     setAnalysisResults(null);
     setComparisonResults(null);
+    setBatchResults([]);
     setExcelData([]);
     setSelectedInputs([]);
-    setParsedPdfFilename(null);
+    setParsedPdfFilenames([]);
     
     // Reset model selection
     setSelectedModelId("");
@@ -753,8 +774,104 @@ const Index = () => {
     });
   };
 
-  const handleCombinedCheck = async () => {
-    if (!pdfFile || !selectedModelId || selectedInputs.length === 0) {
+  const processBatchPdfComparison = async () => {
+    if (pdfFiles.length === 0 || !selectedModelId || excelData.length === 0) {
+      toast({
+        title: "Missing Requirements",
+        description: "Please upload PDFs, Excel data, and select a model",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsBatchProcessing(true);
+    const results: any[] = [];
+
+    for (let i = 0; i < pdfFiles.length; i++) {
+      const pdfFile = pdfFiles[i];
+      setCurrentProcessingIndex(i);
+      
+      try {
+        // 1. Auto-populate from filename
+        const parsedFilename = parsedPdfFilenames[i];
+        let currentSelectedInputs: any[] = [];
+        
+        if (parsedFilename && excelData.length > 0) {
+          const { sku, version, descriptionType } = parsedFilename;
+          const matchingRow = excelData.find(row => {
+            const rowSku = String(row['Communication no.'] || '').trim();
+            const rowVersion = String(row['Name of Dependency'] || '').trim();
+            const rowDescription = String(row['Description'] || '').trim().toUpperCase();
+            
+            return rowSku === sku && 
+                   rowVersion === version && 
+                   rowDescription === descriptionType;
+          });
+          
+          if (matchingRow) {
+            // Build selected inputs from matching row
+            const fieldMapping = getFieldMapping(selectedModelId);
+            currentSelectedInputs = Object.entries(fieldMapping)
+              .filter(([excelCol]) => matchingRow[excelCol])
+              .map(([excelCol]) => ({
+                column: excelCol,
+                value: String(matchingRow[excelCol])
+              }));
+          }
+        }
+        
+        // 2. Compare PDF with inputs
+        const formData = new FormData();
+        formData.append('pdf', pdfFile);
+        formData.append('selectedInputs', JSON.stringify(currentSelectedInputs));
+        formData.append('modelId', selectedModelId);
+
+        const { data, error } = await supabase.functions.invoke('compare-documents', {
+          body: formData,
+        });
+
+        if (error) throw error;
+
+        // 3. Store result
+        results.push({
+          filename: pdfFile.name,
+          comparisonResults: data.results || [],
+          analysisResults: data.analysisResults || {},
+          selectedInputs: currentSelectedInputs,
+          parsedFilename: parsedFilename,
+          summary: data.summary
+        });
+        
+        toast({
+          title: `Processed ${i + 1}/${pdfFiles.length}`,
+          description: `Completed: ${pdfFile.name}`,
+        });
+        
+      } catch (error) {
+        console.error(`Error processing ${pdfFile.name}:`, error);
+        results.push({
+          filename: pdfFile.name,
+          comparisonResults: [],
+          analysisResults: null,
+          selectedInputs: [],
+          parsedFilename: parsedPdfFilenames[i],
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    setBatchResults(results);
+    setIsBatchProcessing(false);
+    setCurrentProcessingIndex(0);
+    
+    toast({
+      title: "Batch processing complete",
+      description: `Processed ${results.length} PDF files`,
+    });
+  };
+
+  const processSinglePdf = async () => {
+    if (pdfFiles.length === 0 || !selectedModelId || selectedInputs.length === 0) {
       toast({
         title: "Missing Requirements",
         description: "Please upload a PDF, select a model, and choose inputs to check",
@@ -764,11 +881,9 @@ const Index = () => {
     }
 
     try {
-      // Step 1: Analyze the document
       setIsAnalyzing(true);
       await analyzePdf();
       
-      // Step 2: Compare with Excel data
       setIsAnalyzing(false);
       setIsComparing(true);
       await comparePdfWithSelectedInputs();
@@ -782,6 +897,68 @@ const Index = () => {
         description: error instanceof Error ? error.message : "An error occurred during the check",
         variant: "destructive"
       });
+    }
+  };
+
+  const downloadBatchPDFReports = () => {
+    if (!batchResults.length) return;
+    
+    const doc = new jsPDF('l', 'mm', 'a4');
+    
+    batchResults.forEach((result, index) => {
+      if (index > 0) doc.addPage();
+      
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text(`Report for: ${result.filename}`, 14, 15);
+      
+      const tableData = result.comparisonResults.map((compResult: any) => [
+        compResult.field,
+        compResult.excelValue,
+        compResult.pdfValue,
+        compResult.status === 'correct' ? 'MATCHED' : compResult.status === 'incorrect' ? 'MISMATCHED' : 'NOT FOUND'
+      ]);
+      
+      autoTable(doc, {
+        head: [['Field Name', 'SAP Data', 'Info from Pack', 'Comparison']],
+        body: tableData,
+        startY: 25,
+        theme: 'grid',
+        styles: { fontSize: 8 }
+      });
+    });
+    
+    doc.save(`batch-report-${new Date().toISOString().slice(0,10)}.pdf`);
+    toast({ title: "PDF reports downloaded", description: `Generated ${batchResults.length} pages` });
+  };
+
+  const downloadBatchExcelReport = () => {
+    if (!batchResults.length || !session?.user?.email) return;
+
+    try {
+      const reportRows = batchResults.map(result => ({
+        'Timestamp': new Date().toLocaleString(),
+        'User': session.user.email,
+        'File Name': result.filename,
+        'Match Rate': `${Math.round((result.comparisonResults.filter((r: any) => r.status === 'correct').length / result.comparisonResults.length) * 100)}%`
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(reportRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Batch Report");
+      
+      XLSX.writeFile(workbook, `Batch_Report_${new Date().toISOString().slice(0,10)}.xlsx`);
+      toast({ title: "Excel report downloaded" });
+    } catch (error) {
+      toast({ title: "Report generation failed", variant: "destructive" });
+    }
+  };
+
+  const handleCombinedCheck = async () => {
+    if (pdfFiles.length > 1) {
+      await processBatchPdfComparison();
+    } else {
+      await processSinglePdf();
     }
   };
 
@@ -904,7 +1081,8 @@ const Index = () => {
                 {/* PDF Upload Card */}
                 <FileUpload
                   onFileSelect={handleFileSelect}
-                  pdfFile={pdfFile}
+                  pdfFiles={pdfFiles}
+                  onRemovePdf={handleRemovePdf}
                   onValidationError={(message) => toast({
                     title: "Validation Error",
                     description: message,
@@ -921,6 +1099,26 @@ const Index = () => {
             </Card>
           </div>
 
+          {/* Progress Indicator for Batch Processing */}
+          {isBatchProcessing && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Card className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Processing PDFs...</h3>
+                    <span className="text-sm text-muted-foreground">
+                      {currentProcessingIndex + 1} / {pdfFiles.length}
+                    </span>
+                  </div>
+                  <Progress value={((currentProcessingIndex + 1) / pdfFiles.length) * 100} />
+                  <p className="text-sm text-muted-foreground">
+                    Currently processing: {pdfFiles[currentProcessingIndex]?.name}
+                  </p>
+                </div>
+              </Card>
+            </div>
+          )}
+
           {/* Action Buttons Section - Full Width Second Row */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="p-6">
@@ -928,11 +1126,16 @@ const Index = () => {
                 {/* Combined Check Button */}
                 <Button
                   onClick={handleCombinedCheck}
-                  disabled={!pdfFile || !selectedModelId || selectedInputs.length === 0 || isAnalyzing || isComparing}
+                  disabled={pdfFiles.length === 0 || !selectedModelId || selectedInputs.length === 0 || isAnalyzing || isComparing || isBatchProcessing}
                   size="lg"
                   className="flex-1"
                 >
-                  {isAnalyzing ? (
+                  {isBatchProcessing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Processing {currentProcessingIndex + 1}/{pdfFiles.length}
+                    </>
+                  ) : isAnalyzing ? (
                     <>
                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                       Analyzing Document...
@@ -945,7 +1148,7 @@ const Index = () => {
                   ) : (
                     <>
                       <GitCompare className="w-5 h-5 mr-2" />
-                      Check
+                      {pdfFiles.length > 1 ? `Compare ${pdfFiles.length} PDFs` : 'Check'}
                     </>
                   )}
                 </Button>
@@ -964,8 +1167,19 @@ const Index = () => {
             </Card>
           </div>
 
-          {/* Comparison Results */}
-          {comparisonResults && comparisonResults.length > 0 && (
+          {/* Batch Results */}
+          {batchResults.length > 0 && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <BatchComparisonResults
+                batchResults={batchResults}
+                onDownloadBatchPDF={downloadBatchPDFReports}
+                onDownloadBatchExcel={downloadBatchExcelReport}
+              />
+            </div>
+          )}
+
+          {/* Comparison Results (for single PDF) */}
+          {comparisonResults && comparisonResults.length > 0 && batchResults.length === 0 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <ComparisonResults 
                 results={comparisonResults}
@@ -981,7 +1195,7 @@ const Index = () => {
                 excelFile={excelFile}
                 onSelectedInputsChange={handleSelectedInputsChange}
                 onPrimaryKeyChange={handlePrimaryKeyChange}
-                autoPopulateTrigger={parsedPdfFilename}
+                autoPopulateTrigger={parsedPdfFilenames[0] || null}
               />
             </div>
           )}
