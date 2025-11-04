@@ -818,54 +818,173 @@ const Index = () => {
   const downloadBatchPDFReports = () => {
     if (!batchResults.length) return;
     
-    const doc = new jsPDF('l', 'mm', 'a4');
+    const doc = new jsPDF('l', 'mm', 'a4'); // landscape
     
     batchResults.forEach((result, index) => {
       if (index > 0) doc.addPage();
       
+      // Title
       doc.setFontSize(16);
       doc.setFont(undefined, 'bold');
       doc.text(`Report for: ${result.filename}`, 14, 15);
       
-      const tableData = result.comparisonResults.map((compResult: any) => [
-        compResult.field,
-        compResult.excelValue,
-        compResult.pdfValue,
-        compResult.status === 'correct' ? 'MATCHED' : compResult.status === 'incorrect' ? 'MISMATCHED' : 'NOT FOUND'
-      ]);
+      // Prepare ALL comparison results (no filtering)
+      const tableData = result.comparisonResults.map((compResult: any) => {
+        let statusText = '';
+        if (compResult.status === 'correct') statusText = 'MATCHED';
+        else if (compResult.status === 'incorrect') statusText = 'MISMATCHED';
+        else statusText = 'NOT FOUND';
+        
+        return [
+          compResult.field,
+          compResult.excelValue,
+          compResult.pdfValue + (compResult.matchDetails ? `\n${compResult.matchDetails}` : ''),
+          statusText
+        ];
+      });
       
+      // Generate table with color-coded status column
       autoTable(doc, {
-        head: [['Field Name', 'SAP Data', 'Info from Pack', 'Comparison']],
+        head: [['Field Name', 'SAP Data (from Excel file)', 'Info from Pack', 'Comparison']],
         body: tableData,
         startY: 25,
         theme: 'grid',
-        styles: { fontSize: 8 }
+        styles: { 
+          fontSize: 8,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: [71, 85, 105], // slate-600
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'left'
+        },
+        columnStyles: {
+          0: { cellWidth: 50 },
+          1: { cellWidth: 70 },
+          2: { cellWidth: 70 },
+          3: { 
+            cellWidth: 45,
+            halign: 'center',
+            fontStyle: 'bold'
+          },
+        },
+        didParseCell: (data) => {
+          // Apply color coding to Comparison column
+          if (data.column.index === 3 && data.section === 'body') {
+            const status = result.comparisonResults[data.row.index].status;
+            if (status === 'correct') {
+              data.cell.styles.textColor = [22, 163, 74]; // Green
+            } else if (status === 'incorrect') {
+              data.cell.styles.textColor = [220, 38, 38]; // Red
+            } else if (status === 'not-found') {
+              data.cell.styles.textColor = [245, 158, 11]; // Amber
+            }
+          }
+        }
       });
     });
     
     doc.save(`batch-report-${new Date().toISOString().slice(0,10)}.pdf`);
-    toast({ title: "PDF reports downloaded", description: `Generated ${batchResults.length} pages` });
+    toast({ title: "PDF reports downloaded", description: `Generated ${batchResults.length} pages with color-coded status` });
   };
 
   const downloadBatchExcelReport = () => {
     if (!batchResults.length || !session?.user?.email) return;
 
     try {
-      const reportRows = batchResults.map(result => ({
-        'Timestamp': new Date().toLocaleString(),
-        'User': session.user.email,
-        'File Name': result.filename,
-        'Match Rate': `${Math.round((result.comparisonResults.filter((r: any) => r.status === 'correct').length / result.comparisonResults.length) * 100)}%`
-      }));
+      // Create rows following the same structure as single PDF report
+      const reportRows = batchResults.map(result => {
+        // 1. Timestamp
+        const now = new Date();
+        const timestamp = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')} ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        
+        const reportRow: any = {
+          'Timestamp': timestamp,
+          'User': session.user.email,
+          'File Name': result.filename
+        };
 
+        // 2. Add RESULT columns (from comparison results)
+        result.comparisonResults.forEach((compResult: any) => {
+          const status = compResult.status === 'correct' ? 'MATCHED' : 
+                         compResult.status === 'incorrect' ? 'MISMATCHED' : 
+                         'Not Found';
+          
+          // Extract field name - handle parentheses
+          let fieldName = compResult.field;
+          const parenMatch = fieldName.match(/\(([^)]+)\)/);
+          if (parenMatch) {
+            fieldName = parenMatch[1];
+          }
+          
+          reportRow[`RESULT_${fieldName}`] = status;
+        });
+
+        // 3. Add SAP columns (from selected inputs)
+        if (result.selectedInputs) {
+          result.selectedInputs.forEach((input: any) => {
+            reportRow[`${input.column}_SAP`] = input.value;
+          });
+        }
+
+        // 4. Add PDF Analysis columns (from analysis results)
+        if (result.analysisResults?.fields) {
+          Object.entries(result.analysisResults.fields).forEach(([key, value]) => {
+            reportRow[key] = String(value);
+          });
+        }
+
+        return reportRow;
+      });
+
+      // Create worksheet
       const worksheet = XLSX.utils.json_to_sheet(reportRows);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Batch Report");
+
+      // Apply cell styling (same as single PDF report)
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+      const firstRow = reportRows[0];
+      const columnKeys = Object.keys(firstRow);
+      
+      columnKeys.forEach((key, col) => {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+        if (!worksheet[cellAddress]) return;
+        
+        if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+        
+        // Apply color based on column type
+        if (key.startsWith('RESULT_')) {
+          // RED for RESULT columns
+          worksheet[cellAddress].s = {
+            font: { color: { rgb: "FF0000" }, bold: true }
+          };
+        } else if (key.endsWith('_SAP')) {
+          // BLUE for SAP columns
+          worksheet[cellAddress].s = {
+            font: { color: { rgb: "0000FF" }, bold: true }
+          };
+        } else if (!['Timestamp', 'User', 'File Name'].includes(key)) {
+          // BLACK for PDF columns
+          worksheet[cellAddress].s = {
+            font: { color: { rgb: "000000" }, bold: true }
+          };
+        }
+      });
       
       XLSX.writeFile(workbook, `Batch_Report_${new Date().toISOString().slice(0,10)}.xlsx`);
-      toast({ title: "Excel report downloaded" });
+      toast({ 
+        title: "Excel report downloaded", 
+        description: `Generated report with ${batchResults.length} PDFs` 
+      });
     } catch (error) {
-      toast({ title: "Report generation failed", variant: "destructive" });
+      console.error('Error generating batch Excel report:', error);
+      toast({ 
+        title: "Report generation failed", 
+        description: error instanceof Error ? error.message : "Failed to generate report",
+        variant: "destructive" 
+      });
     }
   };
 

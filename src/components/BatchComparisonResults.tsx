@@ -152,8 +152,21 @@ export const BatchComparisonResults = ({
         </Card>
       </div>
       
-      {/* Horizontal Scrollable Tabs for Each PDF */}
+      {/* Download All Reports - Now positioned before PDF selector */}
+      <div className="flex gap-2 justify-end">
+        <Button onClick={onDownloadBatchPDF} variant="outline">
+          <FileText className="w-4 h-4 mr-2" />
+          Save All PDFs
+        </Button>
+        <Button onClick={onDownloadBatchExcel} variant="outline">
+          <Download className="w-4 h-4 mr-2" />
+          Save Excel Report
+        </Button>
+      </div>
+      
+      {/* Horizontal Scrollable PDF Selector - Moved to just above report */}
       <Card className="p-4">
+        <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Select PDF to view details:</h3>
         <ScrollArea className="w-full">
           <div className="flex gap-2 pb-2">
             {batchResults.map((result, index) => (
@@ -181,18 +194,6 @@ export const BatchComparisonResults = ({
           </div>
         </ScrollArea>
       </Card>
-      
-      {/* Download All Reports */}
-      <div className="flex gap-2 justify-end">
-        <Button onClick={onDownloadBatchPDF} variant="outline">
-          <FileText className="w-4 h-4 mr-2" />
-          Save All PDFs
-        </Button>
-        <Button onClick={onDownloadBatchExcel} variant="outline">
-          <Download className="w-4 h-4 mr-2" />
-          Save Excel Report
-        </Button>
-      </div>
       
       {/* Show Individual Result */}
       {batchResults[selectedResultIndex] && (
@@ -224,6 +225,7 @@ export const BatchComparisonResults = ({
             <ComparisonResults
               results={batchResults[selectedResultIndex].comparisonResults}
               onDownloadReport={onDownloadBatchExcel}
+              isBatchMode={true}
             />
           )}
         </div>

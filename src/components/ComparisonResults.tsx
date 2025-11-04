@@ -43,9 +43,10 @@ interface ComparisonData {
 interface ComparisonResultsProps {
   results: ComparisonData[];
   onDownloadReport?: () => void;
+  isBatchMode?: boolean;
 }
 
-export const ComparisonResults = ({ results, onDownloadReport }: ComparisonResultsProps) => {
+export const ComparisonResults = ({ results, onDownloadReport, isBatchMode = false }: ComparisonResultsProps) => {
   const correctCount = results.filter(r => r.status === 'correct').length;
   const incorrectCount = results.filter(r => r.status === 'incorrect').length;
   const notFoundCount = results.filter(r => r.status === 'not-found').length;
@@ -193,16 +194,18 @@ export const ComparisonResults = ({ results, onDownloadReport }: ComparisonResul
       <Card className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Field Comparison Report</h3>
-          <div className="flex gap-2">
-            <Button onClick={handleDownloadPDF} variant="outline" size="sm">
-              <FileText className="w-4 h-4 mr-2" />
-              Save PDF
-            </Button>
-            <Button onClick={onDownloadReport} variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Save Excel
-            </Button>
-          </div>
+          {!isBatchMode && (
+            <div className="flex gap-2">
+              <Button onClick={handleDownloadPDF} variant="outline" size="sm">
+                <FileText className="w-4 h-4 mr-2" />
+                Save PDF
+              </Button>
+              <Button onClick={onDownloadReport} variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Save Excel
+              </Button>
+            </div>
+          )}
         </div>
         
         {/* Fixed Header Table */}
