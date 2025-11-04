@@ -60,9 +60,18 @@ export const processBatchPdfComparison = async (
           const rowVersion = String(row['Name of Dependency'] || '').trim();
           const rowDescription = String(row['Description'] || '').trim().toUpperCase();
           
+          // Map Excel Description values to match parsed filename types
+          // Excel may have "MA", "MA-BOX", "SA", "SEMI", etc.
+          let normalizedDescription = rowDescription;
+          if (rowDescription === 'MA' || rowDescription === 'MA-BOX') {
+            normalizedDescription = 'MA-BOX';
+          } else if (rowDescription === 'SA' || rowDescription === 'SEMI') {
+            normalizedDescription = 'SEMI';
+          }
+          
           return rowSku === sku && 
                  rowVersion === version && 
-                 rowDescription === descriptionType;
+                 normalizedDescription === descriptionType;
         });
         
         if (!matchingRow) {
