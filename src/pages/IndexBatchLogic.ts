@@ -4,6 +4,12 @@ import { getFieldMapping } from "@/config/fieldMappings";
 import { ParsedPdfFilename } from "@/lib/pdfFilenameParser";
 import { normalizeFieldValue } from "@/lib/valueNormalizer";
 
+// Utility function to add delay between API calls
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Delay between processing PDFs to avoid rate limits (15 seconds)
+const PROCESSING_DELAY_MS = 15000;
+
 export const processBatchPdfComparison = async (
   pdfFiles: File[],
   parsedPdfFilenames: (ParsedPdfFilename | null)[],
@@ -193,17 +199,62 @@ export const processBatchPdfComparison = async (
         description: `✅ ${data.summary?.correct || 0} correct, ❌ ${data.summary?.incorrect || 0} incorrect, ⚠️ ${data.summary?.notFound || 0} not found`,
         duration: 5000,
       });
+
+      // Add delay between processing to avoid rate limits
+      // Skip delay for the last PDF
+      if (i < pdfFiles.length - 1) {
+        console.log(`⏳ Waiting ${PROCESSING_DELAY_MS / 1000} seconds before next PDF...`);
+        await delay(PROCESSING_DELAY_MS);
+      }
       
     } catch (error) {
       console.error(`Error processing ${pdfFile.name}:`, error);
+      
+      // Determine error type for better handling
+      let errorType = 'unknown';
+      let errorMessage = 'Unknown error occurred';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Detect rate limit error (429)
+        if (errorMessage.includes('429') || 
+            errorMessage.includes('rate limit') || 
+            errorMessage.includes('call rate limit')) {
+          errorType = 'rate_limit';
+          errorMessage = 'API rate limit exceeded. The system is processing too many requests. Please wait 30 seconds before trying again.';
+          
+          toast({
+            title: `⏳ Rate Limit Reached: ${pdfFile.name}`,
+            description: errorMessage,
+            variant: "destructive",
+            duration: 8000,
+          });
+        }
+        // Detect network errors
+        else if (errorMessage.includes('fetch') || 
+                 errorMessage.includes('network') || 
+                 errorMessage.includes('Failed to fetch')) {
+          errorType = 'network';
+          errorMessage = 'Network error occurred. Please check your connection.';
+        }
+      }
+      
       results.push({
         filename: pdfFile.name,
         comparisonResults: [],
         analysisResults: null,
         selectedInputs: [],
         parsedFilename: parsedPdfFilenames[i],
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMessage,
+        errorType: errorType
       });
+      
+      // If rate limit error, add extra delay before continuing
+      if (errorType === 'rate_limit') {
+        console.log('⏳ Rate limit detected, adding 30 second delay...');
+        await delay(30000); // Wait 30 seconds before processing next PDF
+      }
     }
   }
 
@@ -215,13 +266,14 @@ export const processBatchPdfComparison = async (
   const successfulPdfs = results.filter(r => !r.error).length;
   const failedPdfs = results.filter(r => r.error).length;
   const primaryKeyFailed = results.filter(r => r.errorType === 'primary_key_failed').length;
+  const rateLimitFailed = results.filter(r => r.errorType === 'rate_limit').length;
   const totalCorrect = results.reduce((sum, r) => sum + (r.summary?.correct || 0), 0);
   const totalIncorrect = results.reduce((sum, r) => sum + (r.summary?.incorrect || 0), 0);
   const totalNotFound = results.reduce((sum, r) => sum + (r.summary?.notFound || 0), 0);
   
   toast({
     title: "📊 Batch Processing Complete - Compilation Report",
-    description: `Total: ${totalPdfs} PDFs | ✅ ${successfulPdfs} successful | ❌ ${failedPdfs} failed (${primaryKeyFailed} primary key)\nFields: ${totalCorrect} correct, ${totalIncorrect} incorrect, ${totalNotFound} not found`,
+    description: `Total: ${totalPdfs} PDFs | ✅ ${successfulPdfs} successful | ❌ ${failedPdfs} failed (${primaryKeyFailed} primary key, ${rateLimitFailed} rate limit)\nFields: ${totalCorrect} correct, ${totalIncorrect} incorrect, ${totalNotFound} not found`,
     duration: 10000,
   });
 

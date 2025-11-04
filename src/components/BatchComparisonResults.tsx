@@ -152,42 +152,40 @@ export const BatchComparisonResults = ({
         </Card>
       </div>
       
-      {/* Download All Reports - Now positioned before PDF selector */}
-      <div className="flex gap-2 justify-end">
-        <Button onClick={onDownloadBatchPDF} variant="outline">
-          <FileText className="w-4 h-4 mr-2" />
-          Save All PDFs
-        </Button>
-        <Button onClick={onDownloadBatchExcel} variant="outline">
-          <Download className="w-4 h-4 mr-2" />
-          Save Excel Report
-        </Button>
-      </div>
-      
-      {/* Horizontal Scrollable PDF Selector - Moved to just above report */}
+      {/* Horizontal Scrollable PDF Selector - Positioned just above report */}
       <Card className="p-4">
-        <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Select PDF to view details:</h3>
-        <ScrollArea className="w-full">
-          <div className="flex gap-2 pb-2">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            Select PDF to view details:
+          </h3>
+          <span className="text-xs text-muted-foreground">
+            {batchResults.length} PDFs • Scroll horizontally →
+          </span>
+        </div>
+        <ScrollArea className="w-full whitespace-nowrap rounded-md border bg-muted/20 p-2">
+          <div className="flex gap-2">
             {batchResults.map((result, index) => (
               <Button
                 key={index}
-                variant={selectedResultIndex === index ? "default" : "outline"}
+                size="sm"
+                variant={selectedResultIndex === index ? "default" : "ghost"}
                 onClick={() => setSelectedResultIndex(index)}
-                className="shrink-0 whitespace-nowrap"
+                className="shrink-0 min-w-[140px] justify-start"
               >
-                <FileText className="w-4 h-4 mr-2" />
-                {result.filename}
+                <FileText className="w-3 h-3 mr-2 shrink-0" />
+                <span className="truncate">{result.filename}</span>
                 {result.error && (
-                  result.errorType === 'primary_key_failed' ? (
-                    <Key className="w-4 h-4 ml-2 text-amber-500" />
-                  ) : result.errorType === 'network' ? (
-                    <WifiOff className="w-4 h-4 ml-2 text-destructive" />
-                  ) : result.errorType === 'rate_limit' ? (
-                    <Clock className="w-4 h-4 ml-2 text-amber-500" />
-                  ) : (
-                    <XCircle className="w-4 h-4 ml-2 text-destructive" />
-                  )
+                  <span className="ml-auto shrink-0">
+                    {result.errorType === 'primary_key_failed' ? (
+                      <Key className="w-3 h-3 text-amber-500" />
+                    ) : result.errorType === 'network' ? (
+                      <WifiOff className="w-3 h-3 text-destructive" />
+                    ) : result.errorType === 'rate_limit' ? (
+                      <Clock className="w-3 h-3 text-amber-500" />
+                    ) : (
+                      <XCircle className="w-3 h-3 text-destructive" />
+                    )}
+                  </span>
                 )}
               </Button>
             ))}
@@ -225,6 +223,7 @@ export const BatchComparisonResults = ({
             <ComparisonResults
               results={batchResults[selectedResultIndex].comparisonResults}
               onDownloadReport={onDownloadBatchExcel}
+              onDownloadBatchPDF={onDownloadBatchPDF}
               isBatchMode={true}
             />
           )}

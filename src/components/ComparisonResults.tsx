@@ -43,10 +43,11 @@ interface ComparisonData {
 interface ComparisonResultsProps {
   results: ComparisonData[];
   onDownloadReport?: () => void;
+  onDownloadBatchPDF?: () => void;
   isBatchMode?: boolean;
 }
 
-export const ComparisonResults = ({ results, onDownloadReport, isBatchMode = false }: ComparisonResultsProps) => {
+export const ComparisonResults = ({ results, onDownloadReport, onDownloadBatchPDF, isBatchMode = false }: ComparisonResultsProps) => {
   const correctCount = results.filter(r => r.status === 'correct').length;
   const incorrectCount = results.filter(r => r.status === 'incorrect').length;
   const notFoundCount = results.filter(r => r.status === 'not-found').length;
@@ -194,18 +195,33 @@ export const ComparisonResults = ({ results, onDownloadReport, isBatchMode = fal
       <Card className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Field Comparison Report</h3>
-          {!isBatchMode && (
-            <div className="flex gap-2">
-              <Button onClick={handleDownloadPDF} variant="outline" size="sm">
-                <FileText className="w-4 h-4 mr-2" />
-                Save PDF
-              </Button>
-              <Button onClick={onDownloadReport} variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" />
-                Save Excel
-              </Button>
-            </div>
-          )}
+          <div className="flex gap-2">
+            {isBatchMode ? (
+              // Batch mode: Show "Save All PDFs" and "Save Excel Report"
+              <>
+                <Button onClick={onDownloadBatchPDF} variant="outline" size="sm">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Save All PDFs
+                </Button>
+                <Button onClick={onDownloadReport} variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  Save Excel Report
+                </Button>
+              </>
+            ) : (
+              // Single PDF mode: Show "Save PDF" and "Save Excel"
+              <>
+                <Button onClick={handleDownloadPDF} variant="outline" size="sm">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Save PDF
+                </Button>
+                <Button onClick={onDownloadReport} variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  Save Excel
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         
         {/* Fixed Header Table */}
