@@ -55,10 +55,17 @@ export const processBatchPdfComparison = async (
       } else {
         // 2. Search for matching row in Excel
         const { sku, version, descriptionType } = parsedFilename;
-        const matchingRow = excelData.find(row => {
+        console.log(`🔍 Looking for: SKU="${sku}", Version="${version}", Type="${descriptionType}"`);
+        
+        const matchingRow = excelData.find((row, index) => {
           const rowSku = String(row['Communication no.'] || '').trim();
           const rowVersion = String(row['Name of Dependency'] || '').trim();
           const rowDescription = String(row['Description'] || '').trim().toUpperCase();
+          
+          // Log first 3 rows for debugging
+          if (index < 3) {
+            console.log(`📋 Excel row ${index}: SKU="${rowSku}", Version="${rowVersion}", Desc="${rowDescription}"`);
+          }
           
           // Normalize abbreviated Excel Description values to match parsed filename types
           let normalizedDescription = rowDescription;
@@ -74,6 +81,18 @@ export const processBatchPdfComparison = async (
         });
         
         if (!matchingRow) {
+          // Find rows that match just SKU
+          const skuMatches = excelData.filter(row => 
+            String(row['Communication no.'] || '').trim() === sku
+          );
+          console.log(`❌ No match found. Found ${skuMatches.length} rows with SKU="${sku}"`);
+          if (skuMatches.length > 0) {
+            console.log('📊 Available versions for this SKU:', 
+              skuMatches.map(r => String(r['Name of Dependency'] || '').trim()).slice(0, 10));
+            console.log('📊 Available descriptions for this SKU:', 
+              skuMatches.map(r => String(r['Description'] || '').trim()).slice(0, 10));
+          }
+          
           primaryKeyStatus.reason = `No Excel row found for SKU: ${sku}, Version: ${version}, Type: ${descriptionType}`;
           toast({
             title: `⚠️ No Match Found: ${pdfFile.name}`,
