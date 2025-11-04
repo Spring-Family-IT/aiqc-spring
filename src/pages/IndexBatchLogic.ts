@@ -60,12 +60,11 @@ export const processBatchPdfComparison = async (
           const rowVersion = String(row['Name of Dependency'] || '').trim();
           const rowDescription = String(row['Description'] || '').trim().toUpperCase();
           
-          // Map Excel Description values to match parsed filename types
-          // Excel may have "MA", "MA-BOX", "SA", "SEMI", etc.
+          // Normalize abbreviated Excel Description values to match parsed filename types
           let normalizedDescription = rowDescription;
-          if (rowDescription === 'MA' || rowDescription === 'MA-BOX') {
+          if (rowDescription === 'MA') {
             normalizedDescription = 'MA-BOX';
-          } else if (rowDescription === 'SA' || rowDescription === 'SEMI') {
+          } else if (rowDescription === 'SA') {
             normalizedDescription = 'SEMI';
           }
           
