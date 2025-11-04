@@ -76,21 +76,16 @@ export const processBatchPdfComparison = async (
             console.log(`📋 Excel row ${rowIndex}: SKU="${rowSku}", Version="${rowVersion}", Desc="${rowDescription}"`);
           }
           
-          // Normalize abbreviated Excel Description values to match parsed filename types
-          let normalizedDescription = rowDescription;
-          if (rowDescription === 'MA') {
-            normalizedDescription = 'MA-BOX';
-          } else if (rowDescription === 'SA') {
-            normalizedDescription = 'SEMI';
-          }
-          
           // Case-insensitive version comparison
           const versionMatch = rowVersion.toUpperCase() === version.toUpperCase();
+          
+          // Description matching: check if Excel description contains the type keyword
+          const descriptionMatch = rowDescription.includes(descriptionType);
           
           return (
             rowSku === sku &&
             versionMatch &&
-            normalizedDescription === descriptionType
+            descriptionMatch
           );
         });
         
