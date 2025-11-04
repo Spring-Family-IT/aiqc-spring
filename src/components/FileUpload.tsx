@@ -111,37 +111,6 @@ export const FileUpload = ({ onFileSelect, onExcelSelect, pdfFiles, excelFile, o
               </p>
             </label>
           </Card>
-          
-          {/* List of uploaded PDFs */}
-          {pdfFiles && pdfFiles.length > 0 && (
-            <Card className="p-4">
-              <h4 className="text-sm font-semibold mb-3">Uploaded Files:</h4>
-              <div className="space-y-2">
-                {pdfFiles.map((file, index) => (
-                  <div 
-                    key={index} 
-                    className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FileText className="w-4 h-4 text-primary shrink-0" />
-                      <span className="text-sm truncate">{file.name}</span>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        ({(file.size / 1024).toFixed(0)} KB)
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onRemovePdf?.(index)}
-                      className="shrink-0 ml-2"
-                    >
-                      ×
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
         </div>
       )}
 
