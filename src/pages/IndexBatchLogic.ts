@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getFieldMapping } from "@/config/fieldMappings";
 import { ParsedPdfFilename } from "@/lib/pdfFilenameParser";
+import { normalizeFieldValue } from "@/lib/valueNormalizer";
 
 export const processBatchPdfComparison = async (
   pdfFiles: File[],
@@ -138,7 +139,7 @@ export const processBatchPdfComparison = async (
           // Include ALL mapped fields, even if value is empty
           currentSelectedInputs = Object.entries(fieldMapping).map(([excelCol]) => ({
             column: excelCol,
-            value: String(matchingRow[excelCol] || '') // Use empty string if no value
+            value: normalizeFieldValue(excelCol, String(matchingRow[excelCol] || '')) // Apply normalization
           }));
           
           toast({

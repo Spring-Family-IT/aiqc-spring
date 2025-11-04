@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
+import { normalizeFieldValue } from "@/lib/valueNormalizer";
 
 interface ExcelData {
   [key: string]: string | number | null;
@@ -59,17 +60,6 @@ export default function CascadingDropdowns({
 
   const getDisplayName = (column: string): string => {
     return COLUMN_DISPLAY_NAMES[column] || column;
-  };
-
-  const normalizeValue = (column: string, value: string): string => {
-    // For Piece Count field, append " pcs/pzs" if not already present
-    if (column === 'Piece count of FG') {
-      const trimmedValue = value.trim();
-      if (!trimmedValue.endsWith(' pcs/pzs')) {
-        return `${trimmedValue} pcs/pzs`;
-      }
-    }
-    return value;
   };
 
   // Process Excel file when it changes
@@ -257,7 +247,7 @@ export default function CascadingDropdowns({
           newCheckedColumns[col] = true;
           allInputs.push({
             column: col,
-            value: normalizeValue(col, String(value))
+            value: normalizeFieldValue(col, String(value))
           });
         }
       });
@@ -437,7 +427,7 @@ export default function CascadingDropdowns({
       .filter(([_, isChecked]) => isChecked)
       .map(([col]) => ({
         column: col,
-        value: normalizeValue(col, selectedValues[col] || '')
+        value: normalizeFieldValue(col, selectedValues[col] || '')
       }))
       .filter(item => item.value !== '');
     
@@ -462,7 +452,7 @@ export default function CascadingDropdowns({
         .filter(col => selectedValues[col])
         .map(col => ({
           column: col,
-          value: normalizeValue(col, selectedValues[col])
+          value: normalizeFieldValue(col, selectedValues[col])
         }));
       onSelectedInputsChange?.(allInputs);
     } else {
@@ -477,7 +467,7 @@ export default function CascadingDropdowns({
       .filter(([_, isChecked]) => isChecked)
       .map(([column]) => ({
         column,
-        value: normalizeValue(column, selectedValues[column] || '')
+        value: normalizeFieldValue(column, selectedValues[column] || '')
       }))
       .filter(item => item.value !== '');
   };
