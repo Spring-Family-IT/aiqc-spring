@@ -179,16 +179,24 @@ const Index = () => {
     setExcelFile(file);
     setComparisonResults(null);
     
-    // Parse Excel file for comparison
+    // Parse Excel file using SAP-specific parser
+    const { parseSapExcel } = await import('@/lib/parseSapExcel');
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const { jsonData } = await parseSapExcel(arrayBuffer);
       setExcelData(jsonData);
+      
+      toast({
+        title: "Excel file loaded",
+        description: `Loaded ${jsonData.length} rows for batch processing`,
+      });
     } catch (error) {
       console.error('Error parsing Excel file:', error);
+      toast({
+        title: "Error loading Excel",
+        description: error instanceof Error ? error.message : "Failed to parse Excel file",
+        variant: "destructive",
+      });
     }
   };
 
