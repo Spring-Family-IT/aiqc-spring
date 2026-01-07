@@ -1,1 +1,13 @@
 project_id = "melpllfkupvtisjtpaki"
+
+[functions.health-check]
+verify_jwt = false
+
+[functions.analyze-document]
+verify_jwt = false
+
+[functions.compare-documents]
+verify_jwt = false
+
+[functions.get-document-models]
+verify_jwt = false
