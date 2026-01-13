@@ -1,4 +1,4 @@
-project_id = "melpllfkupvtisjtpaki"
+project_id = "vqwpfrqfvghlmoueygym"
 
 [functions.health-check]
 verify_jwt = false
@@ -10,4 +10,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.get-document-models]
+verify_jwt = false
+
+[functions.send-invitation]
 verify_jwt = false

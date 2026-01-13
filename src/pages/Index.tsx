@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompare, RefreshCw, RotateCcw, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react";
+import { Loader2, FileCheck, LogOut, Brain, FileText, Download, Upload, GitCompare, RefreshCw, RotateCcw, AlertCircle, CheckCircle2, ChevronDown, Shield } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Session } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
@@ -25,6 +25,22 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { parsePdfFilename, ParsedPdfFilename } from "@/lib/pdfFilenameParser";
 import { processBatchPdfComparison as runBatchComparison } from "@/pages/IndexBatchLogic";
+import { useAdmin } from "@/hooks/useAdmin";
+
+// Admin button component
+const AdminButton = () => {
+  const { isAdmin, loading } = useAdmin();
+  const navigate = useNavigate();
+
+  if (loading || !isAdmin) return null;
+
+  return (
+    <Button variant="outline" onClick={() => navigate('/admin')}>
+      <Shield className="w-4 h-4 mr-2" />
+      Admin
+    </Button>
+  );
+};
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -1041,6 +1057,7 @@ const Index = () => {
               <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md">
                 <span className="text-sm font-medium">{session.user.email}</span>
               </div>
+              <AdminButton />
               <Button variant="outline" onClick={handleSignOut}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out
