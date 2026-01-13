@@ -1,5 +1,5 @@
 // Batch processing logic separated for clarity
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { getFieldMapping } from "@/config/fieldMappings";
 import { ParsedPdfFilename } from "@/lib/pdfFilenameParser";
 import { normalizeFieldValue } from "@/lib/valueNormalizer";
