@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
+import { SUPABASE_CONFIG } from "@/config/supabase";
 import { FileUpload } from "@/components/FileUpload";
 import { ModelsList } from "@/components/ModelsList";
 import { ResourceDetails } from "@/components/ResourceDetails";
@@ -86,8 +87,8 @@ const Index = () => {
   }, []);
 
   const checkBackendVersions = async () => {
-    const functionsBase = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const functionsBase = `${SUPABASE_CONFIG.url}/functions/v1`;
+    const anonKey = SUPABASE_CONFIG.anonKey;
     
     try {
       const functions: FunctionName[] = ["analyze-document", "compare-documents", "get-document-models", "health-check"];
